@@ -117,33 +117,6 @@ textarea {
   font-weight: 800;
 }
 
-.language-toggle {
-  display: inline-grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px;
-  padding: 4px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.language-toggle button {
-  min-height: 34px;
-  border: 0;
-  border-radius: 6px;
-  padding: 0 10px;
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 850;
-}
-
-.language-toggle button.active {
-  background: linear-gradient(135deg, var(--green), #38c694);
-  color: var(--white);
-}
-
 .main-nav a:hover,
 .header-call:hover {
   background: rgba(255, 255, 255, 0.09);
@@ -344,10 +317,6 @@ textarea {
   text-transform: uppercase;
 }
 
-.hindi-line {
-  display: none;
-}
-
 label span {
   color: var(--muted);
   font-size: 12px;
@@ -385,11 +354,6 @@ h3 {
   font-size: 19px;
 }
 
-.hero-content .hindi-line {
-  max-width: 650px;
-  color: rgba(255, 255, 255, 0.82);
-}
-
 .hero-actions,
 .form-actions {
   display: flex;
@@ -402,6 +366,7 @@ h3 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   min-height: 46px;
   border: 0;
   border-radius: 8px;
@@ -426,32 +391,6 @@ h3 {
   background: transparent;
   color: var(--danger);
   padding: 0 8px;
-}
-
-.hero-stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-  max-width: 720px;
-  margin: 36px 0 0;
-}
-
-.hero-stats div {
-  padding: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(10px);
-}
-
-.hero-stats dt {
-  font-size: 26px;
-  font-weight: 900;
-}
-
-.hero-stats dd {
-  margin: 0;
-  color: rgba(255, 255, 255, 0.76);
 }
 
 .mobile-cta {
@@ -698,6 +637,38 @@ textarea:focus {
 
 .lead-list {
   display: grid;
+  gap: 14px;
+}
+
+.lead-list article {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.lead-list article strong {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+
+.lead-list article p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.lead-list article small {
+  color: var(--muted);
+}
+
+.lead-list {
+  display: grid;
   gap: 12px;
 }
 
@@ -726,6 +697,20 @@ textarea:focus {
 .contact-cards strong,
 .contact-cards span {
   display: block;
+}
+
+.contact-cards strong .whatsapp-icon {
+  display: inline-grid;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.whatsapp-icon {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  vertical-align: middle;
 }
 
 .contact-cards span {
@@ -770,10 +755,6 @@ select option {
     scrollbar-width: none;
   }
 
-  .language-toggle {
-    justify-self: end;
-  }
-
   .main-nav::-webkit-scrollbar {
     display: none;
   }
@@ -787,7 +768,6 @@ select option {
     top: 111px;
   }
 
-  .hero-stats,
   .contact-cards {
     grid-template-columns: 1fr;
   }
@@ -817,10 +797,6 @@ select option {
     position: static;
     grid-template-columns: 1fr;
     padding: 12px 14px;
-  }
-
-  .language-toggle {
-    justify-self: stretch;
   }
 
   .ticker {
@@ -906,10 +882,6 @@ select option {
     font-size: 16px;
   }
 
-  .hindi-line {
-    font-size: 15px;
-  }
-
   .hero-actions,
   .form-actions {
     display: grid;
@@ -918,20 +890,6 @@ select option {
 
   .button {
     width: 100%;
-  }
-
-  .hero-stats {
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-top: 24px;
-  }
-
-  .hero-stats div:last-child {
-    grid-column: 1 / -1;
-  }
-
-  .hero-stats dt {
-    font-size: 22px;
   }
 
   .mobile-cta {

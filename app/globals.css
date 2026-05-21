@@ -1,0 +1,137 @@
+@import "../styles.css";
+
+.auth-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.auth-actions .button {
+  min-height: 40px;
+  padding: 0 14px;
+}
+
+.account-section {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(360px, 1fr);
+  gap: clamp(24px, 4vw, 48px);
+  background:
+    linear-gradient(135deg, rgba(229, 169, 59, 0.08), transparent 42%),
+    rgba(255, 255, 255, 0.03);
+}
+
+.auth-form,
+.profile-card,
+.history-panel {
+  display: grid;
+  gap: 16px;
+  padding: clamp(18px, 3vw, 28px);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.language-toggle {
+  display: inline-grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.language-toggle button {
+  min-height: 34px;
+  border: 0;
+  border-radius: 6px;
+  padding: 0 10px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.language-toggle button.active {
+  background: linear-gradient(135deg, var(--green), #38c694);
+  color: var(--white);
+}
+
+.history-panel {
+  margin-top: 18px;
+}
+
+.history-list {
+  display: grid;
+  gap: 12px;
+}
+
+.history-list article {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.history-list strong,
+.history-list small,
+.history-list span {
+  display: block;
+}
+
+.history-list small,
+.status-text {
+  color: var(--muted);
+}
+
+.status-text {
+  min-height: 24px;
+  margin: 0;
+  font-weight: 800;
+}
+
+.vehicle-editor {
+  display: grid;
+  gap: 12px;
+}
+
+.vehicle-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.2fr) minmax(90px, 0.5fr) minmax(120px, 0.7fr) auto;
+  gap: 12px;
+  align-items: end;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+@media (max-width: 980px) {
+  .site-header {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-actions {
+    justify-content: stretch;
+  }
+
+  .auth-actions .button {
+    flex: 1;
+  }
+
+  .account-section {
+    grid-template-columns: 1fr;
+  }
+
+  .vehicle-row {
+    grid-template-columns: 1fr;
+  }
+
+  .language-toggle {
+    justify-self: stretch;
+  }
+}

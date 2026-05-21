@@ -2,66 +2,63 @@
 
 ## Project
 
-Sand At Your Door is a static business web app for Digit Infra Pvt LTD. It provides a public sand delivery landing page, a quote form, a Hindi/English toggle, a live price ticker, and a hidden admin pricing screen.
+Sand At Your Door is a Next.js business app for Digit Infra Pvt LTD. It provides a public sand delivery page, English/Hindi language toggle, live daily pricing from Supabase, a quote form, WhatsApp handoff, and a separate Supabase-protected admin dashboard.
 
 ## Run Locally
 
 ```sh
 cd /Users/krishnakant/sand-at-your-door
-python3 -m http.server 4173
+npm run dev
 ```
 
 Public app:
 
 ```text
-http://localhost:4173/
+http://localhost:3000/
 ```
 
-Admin shortcut:
+Admin app:
 
 ```text
-http://localhost:4173/admin.html
-```
-
-Admin credentials:
-
-```text
-Username: admin
-Password: admin123
+http://localhost:3000/admin
 ```
 
 ## Important Files
 
-- `index.html`: public app and hidden admin sections.
-- `admin.html`: redirects to admin mode.
-- `styles.css`: dark responsive UI styling.
-- `app.js`: language toggle, pricing, quote estimate, WhatsApp handoff, admin login.
-- `clarity-config.js`: Microsoft Clarity project config.
-- `clarity.js`: Clarity loader and event wrapper.
+- `app/page.jsx`: public bilingual app, quote form, price ticker, WhatsApp handoff.
+- `app/admin/page.jsx`: admin dashboard for pricing and enquiry status.
+- `app/api/queries/route.js`: server-side public enquiry insert using Supabase service role.
+- `app/api/admin/bootstrap/route.js`: validates logged-in admins with `profiles.is_admin`.
+- `lib/supabaseClient.js`: browser Supabase client.
+- `supabase/schema.sql`: database tables, RLS policies, and seed pricing.
+- `styles.css`: shared dark responsive UI styling.
+- `app/globals.css`: Next-specific and admin-specific styling.
 
 ## Current Behavior
 
-- Hindi is the default language on first load.
-- Language choice is stored in `localStorage`.
-- Admin pricing is protected by client-side login only.
-- Daily vehicle prices are stored in `localStorage`.
-- Customer enquiries open WhatsApp with a pre-filled message.
-- Scheduled delivery shows date and time inputs only when `Scheduled` is selected.
+- Public navigation does not expose an admin link.
+- Admins visit `/admin` directly.
+- Admin access is controlled by `profiles.is_admin = true` in Supabase.
+- Daily vehicle prices are stored in Supabase `pricing.rates`.
+- Customer enquiries are inserted into Supabase `user_queries`.
+- Public users do not need to log in.
+- WhatsApp buttons use inline SVG icons.
+
+## Environment
+
+Required local and deployment variables:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...
+```
+
+Do not commit `.env.local`.
 
 ## UI Guidelines
 
 - Keep the app dark themed.
 - Keep the public UI focused: hero, ticker, products, quote form, contact.
 - Do not expose admin navigation to normal users.
-- Admin should remain English-only unless explicitly requested otherwise.
-- Avoid re-adding removed redundant sections such as separate process, trust strip, or decorative delivery image blocks.
-
-## Production Notes
-
-The current admin login is not production security. Before deploying publicly, replace client-side admin auth and `localStorage` pricing with a real backend:
-
-- Secure admin login with hashed password.
-- Database-backed prices and enquiries.
-- Server-side WhatsApp Business API integration.
-- Environment variables for secrets and tokens.
-
+- Keep admin dashboard English-only unless explicitly requested otherwise.

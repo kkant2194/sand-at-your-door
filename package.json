@@ -1,0 +1,22 @@
+{
+  "name": "sand-at-your-door",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Production-ready Sand At Your Door app built with Next.js and Supabase.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.43.4",
+    "next": "^14.2.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "eslint-config-next": "^14.2.4"
+  }
+}
