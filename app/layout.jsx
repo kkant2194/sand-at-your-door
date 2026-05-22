@@ -1,4 +1,5 @@
 import "./globals.css";
+import ClarityScript from "./ClarityScript";
 
 export const metadata = {
   title: "Sand At Your Door | Digit Infra Pvt LTD",
@@ -9,7 +10,10 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en-IN">
-      <body>{children}</body>
+      <body>
+        {children}
+        <ClarityScript />
+      </body>
     </html>
   );
 }
