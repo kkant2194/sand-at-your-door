@@ -176,6 +176,10 @@ insert into public.site_settings (key, value)
 values ('contact_phone', '917259987874')
 on conflict (key) do nothing;
 
+insert into public.site_settings (key, value)
+values ('contact_email', 'digitInfra@gmail.com')
+on conflict (key) do nothing;
+
 -- After an admin user exists in Supabase Auth, run this for each admin:
 -- update public.profiles
 -- set is_admin = true

@@ -17,6 +17,7 @@ const defaultPricing = {
 };
 
 const fallbackPhoneNumber = "917259987874";
+const fallbackEmail = "digitInfra@gmail.com";
 
 const emptyAuth = {
   email: "",
@@ -72,7 +73,7 @@ export default function AdminPage() {
   const [profile, setProfile] = useState(null);
   const [authForm, setAuthForm] = useState(emptyAuth);
   const [pricing, setPricing] = useState(defaultPricing);
-  const [settings, setSettings] = useState({ contactPhone: fallbackPhoneNumber });
+  const [settings, setSettings] = useState({ contactPhone: fallbackPhoneNumber, contactEmail: fallbackEmail });
   const [queries, setQueries] = useState([]);
   const [authStatus, setAuthStatus] = useState("");
   const [pricingStatus, setPricingStatus] = useState("");
@@ -175,9 +176,13 @@ export default function AdminPage() {
   async function loadSiteSettings() {
     if (!isSupabaseConfigured) return;
 
-    const { data, error } = await supabase.from("site_settings").select("key, value").eq("key", "contact_phone").maybeSingle();
-    if (!error && data?.value) {
-      setSettings({ contactPhone: normalizePhoneNumber(data.value) });
+    const { data, error } = await supabase.from("site_settings").select("key, value").in("key", ["contact_phone", "contact_email"]);
+    if (!error && Array.isArray(data)) {
+      const loadedSettings = Object.fromEntries(data.map((row) => [row.key, row.value]));
+      setSettings({
+        contactPhone: normalizePhoneNumber(loadedSettings.contact_phone),
+        contactEmail: loadedSettings.contact_email || fallbackEmail,
+      });
     }
   }
 
@@ -266,12 +271,20 @@ export default function AdminPage() {
     }
 
     const contactPhone = normalizePhoneNumber(settings.contactPhone);
+    const contactEmail = String(settings.contactEmail || "").trim() || fallbackEmail;
     const { error } = await supabase.from("site_settings").upsert(
-      {
-        key: "contact_phone",
-        value: contactPhone,
-        updated_by: user.id,
-      },
+      [
+        {
+          key: "contact_phone",
+          value: contactPhone,
+          updated_by: user.id,
+        },
+        {
+          key: "contact_email",
+          value: contactEmail,
+          updated_by: user.id,
+        },
+      ],
       { onConflict: "key" },
     );
 
@@ -280,8 +293,8 @@ export default function AdminPage() {
       return;
     }
 
-    setSettings({ contactPhone });
-    setSettingsStatus(`Contact phone saved as ${formatPhoneNumber(contactPhone)}.`);
+    setSettings({ contactPhone, contactEmail });
+    setSettingsStatus(`Contact details saved: ${formatPhoneNumber(contactPhone)} and ${contactEmail}.`);
   }
 
   async function updateQueryStatus(id, status) {
@@ -361,14 +374,14 @@ export default function AdminPage() {
               <div className="admin-copy">
                 <p className="eyebrow">Site settings</p>
                 <h2>Update public contact details.</h2>
-                <p>This phone number is used for call and WhatsApp actions on the public website.</p>
+                <p>These details are used for phone, WhatsApp, and email actions on the public website.</p>
               </div>
               <form className="admin-form" onSubmit={saveSettings}>
                 <label>
                   Contact phone number
                   <input
                     value={settings.contactPhone}
-                    onChange={(event) => setSettings({ contactPhone: event.target.value })}
+                    onChange={(event) => setSettings((current) => ({ ...current, contactPhone: event.target.value }))}
                     type="tel"
                     inputMode="numeric"
                     placeholder="917259987874"
@@ -376,9 +389,19 @@ export default function AdminPage() {
                   />
                 </label>
                 <p className="status-text">Current display: {formatPhoneNumber(settings.contactPhone)}</p>
+                <label>
+                  Contact email
+                  <input
+                    value={settings.contactEmail}
+                    onChange={(event) => setSettings((current) => ({ ...current, contactEmail: event.target.value }))}
+                    type="email"
+                    placeholder="digitInfra@gmail.com"
+                    required
+                  />
+                </label>
                 <div className="form-actions">
                   <button className="button primary" type="submit">
-                    Save contact number
+                    Save contact details
                   </button>
                 </div>
                 <p className="status-text">{settingsStatus}</p>

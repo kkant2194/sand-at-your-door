@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
 const fallbackPhoneNumber = "917259987874";
+const fallbackEmail = "digitInfra@gmail.com";
 
 const defaultVehicles = [
   { id: "tractor", name: "Tractor load", wheels: 2, price: 4200 },
@@ -174,6 +175,7 @@ export default function Home() {
   const [quote, setQuote] = useState(emptyQuote);
   const [pricing, setPricing] = useState(defaultPricing);
   const [contactPhone, setContactPhone] = useState(fallbackPhoneNumber);
+  const [contactEmail, setContactEmail] = useState(fallbackEmail);
   const [quoteStatus, setQuoteStatus] = useState("");
   const t = copy[language];
   const phoneNumber = normalizePhoneNumber(contactPhone);
@@ -203,7 +205,7 @@ export default function Home() {
 
       const [pricingResult, phoneResult] = await Promise.all([
         supabase.from("pricing").select("*").order("price_date", { ascending: false }).limit(1).maybeSingle(),
-        supabase.from("site_settings").select("value").eq("key", "contact_phone").maybeSingle(),
+        supabase.from("site_settings").select("key, value").in("key", ["contact_phone", "contact_email"]),
       ]);
 
       if (!pricingResult.error && pricingResult.data) {
@@ -215,8 +217,10 @@ export default function Home() {
         }));
       }
 
-      if (!phoneResult.error && phoneResult.data?.value) {
-        setContactPhone(normalizePhoneNumber(phoneResult.data.value));
+      if (!phoneResult.error && Array.isArray(phoneResult.data)) {
+        const settings = Object.fromEntries(phoneResult.data.map((row) => [row.key, row.value]));
+        if (settings.contact_phone) setContactPhone(normalizePhoneNumber(settings.contact_phone));
+        if (settings.contact_email) setContactEmail(String(settings.contact_email));
       }
     }
 
@@ -382,19 +386,16 @@ export default function Home() {
               image="https://static.wixstatic.com/media/089437_1ebc91aae6414e9cabca7ae1722c8ae2~mv2.jpg/v1/fill/w_900,h_600,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/IMG-20230116-WA0004.jpg"
               title={t.residential}
               text={t.residentialText}
-              tag={`From ${currency(pricing.vehicles[0]?.price || 0)}`}
             />
             <ProductCard
               image="https://static.wixstatic.com/media/089437_2541a4bf378c4963b1c0afe9b979a272~mv2.jpg/v1/fill/w_900,h_600,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/josh-withers--c4MV3rKm9c-unsplash.jpg"
               title={t.commercial}
               text={t.commercialText}
-              tag="Bulk rates available"
             />
             <ProductCard
               image="https://static.wixstatic.com/media/089437_ca446ad21105402f83d7c0fa48a8081c~mv2.jpg/v1/fill/w_900,h_600,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/jandira-sonnendeck-0DUxxHkRucs-unsplash.jpg"
               title={t.construction}
               text={t.constructionText}
-              tag="Contract pricing"
             />
           </div>
         </section>
@@ -517,9 +518,9 @@ export default function Home() {
               <strong>Phone</strong>
               <span>{displayPhone}</span>
             </a>
-            <a href="mailto:digitInfra@gmail.com">
+            <a href={`mailto:${contactEmail}`}>
               <strong>Email</strong>
-              <span>digitInfra@gmail.com</span>
+              <span>{contactEmail}</span>
             </a>
             <a href={`https://wa.me/${phoneNumber}`} target="_blank" rel="noreferrer">
               <strong>
@@ -540,14 +541,13 @@ export default function Home() {
   );
 }
 
-function ProductCard({ image, title, text, tag }) {
+function ProductCard({ image, title, text }) {
   return (
     <article className="product-card">
       <Image src={image} alt={title} width={900} height={600} sizes="(max-width: 980px) 50vw, 33vw" />
       <div>
         <h3>{title}</h3>
         <p>{text}</p>
-        <span>{tag}</span>
       </div>
     </article>
   );
