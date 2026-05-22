@@ -119,7 +119,12 @@ function currency(value) {
 }
 
 function normalizePhoneNumber(value) {
-  return String(value || "").replace(/\D/g, "") || fallbackPhoneNumber;
+  const digits = String(value || "").replace(/\D/g, "");
+
+  if (!digits) return fallbackPhoneNumber;
+  if (digits.length === 10) return `91${digits}`;
+
+  return digits;
 }
 
 function formatPhoneNumber(value) {
