@@ -76,6 +76,7 @@ Replace `owner@example.com` with the admin email. Repeat this for every admin us
 - Admin enquiry list with status updates
 - Admin vehicle management with wheel count and daily price
 - Daily pricing stored in Supabase
+- Public contact phone number stored in Supabase and editable from admin settings
 
 ## Deployment
 

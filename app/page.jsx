@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
-const phoneNumber = "917259987874";
+const fallbackPhoneNumber = "917259987874";
 
 const defaultVehicles = [
   { id: "tractor", name: "Tractor load", wheels: 2, price: 4200 },
@@ -117,6 +117,24 @@ function currency(value) {
   }).format(Number(value || 0));
 }
 
+function normalizePhoneNumber(value) {
+  return String(value || "").replace(/\D/g, "") || fallbackPhoneNumber;
+}
+
+function formatPhoneNumber(value) {
+  const digits = normalizePhoneNumber(value);
+
+  if (digits.length === 12 && digits.startsWith("91")) {
+    return `+91 ${digits.slice(2, 7)} ${digits.slice(7)}`;
+  }
+
+  if (digits.length === 10) {
+    return `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`;
+  }
+
+  return `+${digits}`;
+}
+
 function normalizePricing(row) {
   if (!row?.rates) return defaultPricing;
   if (!Array.isArray(row.rates.vehicles)) return defaultPricing;
@@ -155,8 +173,11 @@ export default function Home() {
   const [language, setLanguage] = useState("en");
   const [quote, setQuote] = useState(emptyQuote);
   const [pricing, setPricing] = useState(defaultPricing);
+  const [contactPhone, setContactPhone] = useState(fallbackPhoneNumber);
   const [quoteStatus, setQuoteStatus] = useState("");
   const t = copy[language];
+  const phoneNumber = normalizePhoneNumber(contactPhone);
+  const displayPhone = formatPhoneNumber(phoneNumber);
 
   const selectedVehicle = pricing.vehicles.find((vehicle) => vehicle.id === quote.vehicleId) || pricing.vehicles[0];
   const selectedRate = Number(selectedVehicle?.price || 0);
@@ -177,27 +198,29 @@ export default function Home() {
   }, [language]);
 
   useEffect(() => {
-    async function loadPricing() {
+    async function loadPageData() {
       if (!isSupabaseConfigured) return;
 
-      const { data, error } = await supabase
-        .from("pricing")
-        .select("*")
-        .order("price_date", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      const [pricingResult, phoneResult] = await Promise.all([
+        supabase.from("pricing").select("*").order("price_date", { ascending: false }).limit(1).maybeSingle(),
+        supabase.from("site_settings").select("value").eq("key", "contact_phone").maybeSingle(),
+      ]);
 
-      if (!error && data) {
-        const nextPricing = normalizePricing(data);
+      if (!pricingResult.error && pricingResult.data) {
+        const nextPricing = normalizePricing(pricingResult.data);
         setPricing(nextPricing);
         setQuote((current) => ({
           ...current,
           vehicleId: nextPricing.vehicles[0]?.id || current.vehicleId,
         }));
       }
+
+      if (!phoneResult.error && phoneResult.data?.value) {
+        setContactPhone(normalizePhoneNumber(phoneResult.data.value));
+      }
     }
 
-    loadPricing();
+    loadPageData();
   }, []);
 
   function updateQuote(field, value) {
@@ -292,8 +315,8 @@ export default function Home() {
             हिंदी
           </button>
         </div>
-        <a className="header-call" href="tel:+917259987874">
-          +91 72599 87874
+        <a className="header-call" href={`tel:+${phoneNumber}`}>
+          {displayPhone}
         </a>
       </header>
 
@@ -342,7 +365,7 @@ export default function Home() {
         </section>
 
         <div className="mobile-cta" aria-label="Quick contact actions">
-          <a href="tel:+917259987874">Call</a>
+          <a href={`tel:+${phoneNumber}`}>Call</a>
           <a href={`https://wa.me/${phoneNumber}`} target="_blank" rel="noreferrer">
             <WhatsAppIcon />
             WhatsApp
@@ -490,9 +513,9 @@ export default function Home() {
             <p>Patna Bihar, 800020</p>
           </div>
           <div className="contact-cards">
-            <a href="tel:+917259987874">
+            <a href={`tel:+${phoneNumber}`}>
               <strong>Phone</strong>
-              <span>+91 72599 87874</span>
+              <span>{displayPhone}</span>
             </a>
             <a href="mailto:digitInfra@gmail.com">
               <strong>Email</strong>

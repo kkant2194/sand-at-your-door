@@ -16,6 +16,8 @@ const defaultPricing = {
   vehicles: defaultVehicles,
 };
 
+const fallbackPhoneNumber = "917259987874";
+
 const emptyAuth = {
   email: "",
   password: "",
@@ -27,6 +29,24 @@ function currency(value) {
     currency: "INR",
     maximumFractionDigits: 0,
   }).format(Number(value || 0));
+}
+
+function normalizePhoneNumber(value) {
+  return String(value || "").replace(/\D/g, "") || fallbackPhoneNumber;
+}
+
+function formatPhoneNumber(value) {
+  const digits = normalizePhoneNumber(value);
+
+  if (digits.length === 12 && digits.startsWith("91")) {
+    return `+91 ${digits.slice(2, 7)} ${digits.slice(7)}`;
+  }
+
+  if (digits.length === 10) {
+    return `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`;
+  }
+
+  return `+${digits}`;
 }
 
 function normalizePricing(row) {
@@ -52,9 +72,11 @@ export default function AdminPage() {
   const [profile, setProfile] = useState(null);
   const [authForm, setAuthForm] = useState(emptyAuth);
   const [pricing, setPricing] = useState(defaultPricing);
+  const [settings, setSettings] = useState({ contactPhone: fallbackPhoneNumber });
   const [queries, setQueries] = useState([]);
   const [authStatus, setAuthStatus] = useState("");
   const [pricingStatus, setPricingStatus] = useState("");
+  const [settingsStatus, setSettingsStatus] = useState("");
 
   const isAdmin = Boolean(profile?.is_admin);
 
@@ -70,7 +92,7 @@ export default function AdminPage() {
         await bootstrapProfile(data.session.access_token);
       }
 
-      await loadPricing();
+      await Promise.all([loadPricing(), loadSiteSettings()]);
     }
 
     bootstrap();
@@ -150,6 +172,15 @@ export default function AdminPage() {
     if (!error && data) setPricing(normalizePricing(data));
   }
 
+  async function loadSiteSettings() {
+    if (!isSupabaseConfigured) return;
+
+    const { data, error } = await supabase.from("site_settings").select("key, value").eq("key", "contact_phone").maybeSingle();
+    if (!error && data?.value) {
+      setSettings({ contactPhone: normalizePhoneNumber(data.value) });
+    }
+  }
+
   async function loadQueries() {
     const { data, error } = await supabase
       .from("user_queries")
@@ -227,6 +258,32 @@ export default function AdminPage() {
     setPricingStatus(`Prices saved for ${pricing.priceDate}.`);
   }
 
+  async function saveSettings(event) {
+    event.preventDefault();
+    if (!isAdmin) {
+      setSettingsStatus("Admin access is required.");
+      return;
+    }
+
+    const contactPhone = normalizePhoneNumber(settings.contactPhone);
+    const { error } = await supabase.from("site_settings").upsert(
+      {
+        key: "contact_phone",
+        value: contactPhone,
+        updated_by: user.id,
+      },
+      { onConflict: "key" },
+    );
+
+    if (error) {
+      setSettingsStatus(error.message);
+      return;
+    }
+
+    setSettings({ contactPhone });
+    setSettingsStatus(`Contact phone saved as ${formatPhoneNumber(contactPhone)}.`);
+  }
+
   async function updateQueryStatus(id, status) {
     const { error } = await supabase.from("user_queries").update({ status }).eq("id", id);
     if (!error) await loadQueries();
@@ -244,6 +301,7 @@ export default function AdminPage() {
         </a>
         <nav className="main-nav" aria-label="Admin navigation">
           <a href="/">Public site</a>
+          {isAdmin ? <a href="#settings">Settings</a> : null}
           {isAdmin ? <a href="#pricing">Pricing</a> : null}
           {isAdmin ? <a href="#enquiries">Enquiries</a> : null}
         </nav>
@@ -299,6 +357,34 @@ export default function AdminPage() {
 
         {isAdmin ? (
           <>
+            <section id="settings" className="section admin-section">
+              <div className="admin-copy">
+                <p className="eyebrow">Site settings</p>
+                <h2>Update public contact details.</h2>
+                <p>This phone number is used for call and WhatsApp actions on the public website.</p>
+              </div>
+              <form className="admin-form" onSubmit={saveSettings}>
+                <label>
+                  Contact phone number
+                  <input
+                    value={settings.contactPhone}
+                    onChange={(event) => setSettings({ contactPhone: event.target.value })}
+                    type="tel"
+                    inputMode="numeric"
+                    placeholder="917259987874"
+                    required
+                  />
+                </label>
+                <p className="status-text">Current display: {formatPhoneNumber(settings.contactPhone)}</p>
+                <div className="form-actions">
+                  <button className="button primary" type="submit">
+                    Save contact number
+                  </button>
+                </div>
+                <p className="status-text">{settingsStatus}</p>
+              </form>
+            </section>
+
             <section id="pricing" className="section admin-section">
               <div className="admin-copy">
                 <p className="eyebrow">Daily pricing</p>

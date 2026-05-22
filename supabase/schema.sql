@@ -18,6 +18,13 @@ create table if not exists public.pricing (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.site_settings (
+  key text primary key,
+  value text not null,
+  updated_by uuid references public.profiles(id) on delete set null,
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists public.user_queries (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references public.profiles(id) on delete set null,
@@ -43,6 +50,7 @@ alter table public.user_queries alter column user_id drop not null;
 
 alter table public.profiles enable row level security;
 alter table public.pricing enable row level security;
+alter table public.site_settings enable row level security;
 alter table public.user_queries enable row level security;
 
 create or replace function public.is_admin()
@@ -119,6 +127,25 @@ to authenticated
 using (public.is_admin())
 with check (public.is_admin());
 
+drop policy if exists "site_settings_public_read" on public.site_settings;
+create policy "site_settings_public_read"
+on public.site_settings for select
+to anon, authenticated
+using (true);
+
+drop policy if exists "site_settings_admin_insert" on public.site_settings;
+create policy "site_settings_admin_insert"
+on public.site_settings for insert
+to authenticated
+with check (public.is_admin());
+
+drop policy if exists "site_settings_admin_update" on public.site_settings;
+create policy "site_settings_admin_update"
+on public.site_settings for update
+to authenticated
+using (public.is_admin())
+with check (public.is_admin());
+
 drop policy if exists "queries_select_own_or_admin" on public.user_queries;
 create policy "queries_select_own_or_admin"
 on public.user_queries for select
@@ -144,6 +171,10 @@ values (
   '{"vehicles":[{"id":"tractor","name":"Tractor load","wheels":2,"price":4200},{"id":"truck6","name":"6-wheel truck","wheels":6,"price":12500},{"id":"truck10","name":"10-wheel truck","wheels":10,"price":18500},{"id":"truck12","name":"12-wheel truck","wheels":12,"price":22500},{"id":"truck16","name":"16-wheel truck","wheels":16,"price":29500}]}'::jsonb
 )
 on conflict (price_date) do nothing;
+
+insert into public.site_settings (key, value)
+values ('contact_phone', '917259987874')
+on conflict (key) do nothing;
 
 -- After an admin user exists in Supabase Auth, run this for each admin:
 -- update public.profiles
