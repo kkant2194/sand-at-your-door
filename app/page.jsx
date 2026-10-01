@@ -1,8 +1,13 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
+
+import { DEFAULT_SAME_DAY_SURCHARGE, getSameDaySurcharge } from "../lib/deliveryPricing";
+
+import { initAnalytics, trackQuoteEvent } from "../lib/analytics";
+import { createQuoteJourney } from "../lib/quoteAnalytics";
 
 const fallbackPhoneNumber = "917259987874";
 const fallbackEmail = "digitInfra@gmail.com";
@@ -16,7 +21,7 @@ const defaultVehicles = [
 ];
 
 const defaultPricing = {
-  priceDate: new Date().toISOString().slice(0, 10),
+  priceDate: null,
   vehicles: defaultVehicles,
 };
 
@@ -24,86 +29,91 @@ const emptyQuote = {
   name: "",
   phone: "",
   address: "",
-  sandType: "Residential Sand",
+  sandType: "Plaster",
   quantity: 1,
   vehicleId: "tractor",
   delivery: "Same day",
   scheduleDate: "",
-  scheduleTime: "",
   notes: "",
 };
 
 const copy = {
   en: {
-    products: "Products",
+    requirement: "Your requirement", deliveryDetails: "Delivery details", contactDetails: "Contact details", loads: "Number of loads", capacity: "Load capacity: confirm with our team", choose: "Select application", selected: "Selected", estimate: "Your estimate", subtotal: "Load subtotal", surcharge: "Same-day surcharge", estimatedTotal: "Estimated total", priceNote: "Final price depends on delivery location, site access and unloading. Capacity and delivery availability will be confirmed by our team.", updated: "Last updated", examples: "Example rates · Contact us to confirm", sameDay: "Same day", tomorrow: "Tomorrow", scheduled: "Choose a date", optional: "optional", call: "Call", email: "Email", sendDetails: "Send details on WhatsApp", savedTitle: "Your enquiry is saved", reference: "Enquiry reference", nextSteps: "Our team will contact you to confirm pricing and delivery. You can also send these details on WhatsApp.", errorName: "Enter your name.", errorPhone: "Enter a valid Indian mobile number.", errorAddress: "Enter your delivery address.", errorQuantity: "Choose between 1 and 100 whole loads.", errorDate: "Choose today or a future date.", errorTime: "Choose a delivery time.", errorVehicle: "Select a vehicle.", saveError: "We couldn’t save your enquiry. Your details are still here. Please retry or contact us on WhatsApp.", namePlaceholder: "Your full name", phonePlaceholder: "10-digit mobile number", addressPlaceholder: "Site address, locality, PIN code and nearby landmark", notesPlaceholder: "Site access, unloading needs or sand specifications", coverage: "Delivery in Patna", coverageText: "Share your site location so our team can confirm delivery coverage and access.", business: "Digit Infra Pvt LTD", businessText: "Patna, Bihar · 800020", availability: "Confirm delivery availability", availabilityText: "Call or WhatsApp for operating hours and available delivery slots.", illustration: "Illustrative construction images", back: "Back to top", perLoad: "per load", saving: "Sending…", startAgain: "Request another quote",
+    products: "Applications",
     quote: "Quote",
     contact: "Contact",
-    rates: "Today rates",
+    rates: "Vehicle rates",
     eyebrow: "Same day sand delivery in Patna",
-    title: "Reliable sand supply for homes, contractors, and commercial sites.",
+    title: "Sand delivered to your site in Patna.",
     lead:
       "Order construction sand without hidden charges. Get clear pricing, scheduled delivery, and a fast callback from the Digit Infra team.",
-    estimateCta: "Get instant estimate",
+    estimateCta: "Get a quote",
     whatsappCta: "WhatsApp now",
     productsEyebrow: "Sand for every project",
-    productsTitle: "Choose the right material before ordering.",
-    residential: "Residential Sand",
-    residentialText: "For home construction, repairs, flooring base, small masonry jobs, and landscaping work.",
-    commercial: "Commercial Supply",
-    commercialText: "Reliable scheduled supply for shops, warehouses, offices, site preparation, and maintenance teams.",
-    construction: "Construction Sand",
-    constructionText: "High-volume delivery for contractors, builders, and civil work requiring dependable transport.",
+    productsTitle: "Tell us what you’re building.",
+    plaster: "Plaster",
+    plasterText: "Sand requirements for walls and ceilings.",
+    rcc: "RCC (General)",
+    rccText: "Share the sand specifications for your concrete work.",
+    terrace: "Terrace Slab",
+    terraceText: "Plan the quantity and timing for your roof slab pour.",
+    raft: "Raft Foundation",
+    raftText: "Coordinate sand supply for your foundation pour.",
     fastQuote: "Fast quote",
-    quoteTitle: "Estimate your sand order and send it for confirmation.",
+    quoteTitle: "Get an estimate for your delivery.",
     quoteText:
       "This calculator gives an indicative price. Final pricing is confirmed after location, access, quantity, and unloading requirements are checked.",
     customerName: "Customer name",
     mobile: "Mobile number",
     address: "Delivery address",
-    sandType: "Sand type",
+    sandType: "Sand application",
     quantity: "Quantity",
     vehicle: "Vehicle",
     timing: "Delivery timing",
     date: "Delivery date",
     time: "Delivery time",
     notes: "Notes",
-    save: "Save and notify WhatsApp",
+    save: "Request a quote",
     whatsappOnly: "Send on WhatsApp only",
     contactTitle: "Talk to Digit Infra Pvt LTD.",
     saved: "Enquiry saved. Opening WhatsApp for quick confirmation.",
   },
   hi: {
-    products: "उत्पाद",
+    requirement: "आपकी जरूरत", deliveryDetails: "डिलीवरी की जानकारी", contactDetails: "संपर्क की जानकारी", loads: "लोड की संख्या", capacity: "लोड क्षमता: टीम से पुष्टि करें", choose: "उपयोग चुनें", selected: "चुना गया", estimate: "आपका अनुमान", subtotal: "लोड की कीमत", surcharge: "उसी दिन डिलीवरी शुल्क", estimatedTotal: "अनुमानित कुल", priceNote: "अंतिम रेट लोकेशन, साइट के रास्ते और अनलोडिंग पर निर्भर है। हमारी टीम क्षमता और डिलीवरी की उपलब्धता की पुष्टि करेगी।", updated: "अंतिम अपडेट", examples: "उदाहरण रेट · पुष्टि के लिए संपर्क करें", sameDay: "उसी दिन", tomorrow: "कल", scheduled: "तारीख चुनें", optional: "वैकल्पिक", call: "कॉल करें", email: "ईमेल", sendDetails: "जानकारी व्हाट्सऐप पर भेजें", savedTitle: "आपका अनुरोध सेव हो गया", reference: "अनुरोध संदर्भ", nextSteps: "हमारी टीम रेट और डिलीवरी की पुष्टि के लिए संपर्क करेगी। आप यह जानकारी व्हाट्सऐप पर भी भेज सकते हैं।", errorName: "अपना नाम लिखें।", errorPhone: "सही भारतीय मोबाइल नंबर लिखें।", errorAddress: "डिलीवरी का पता लिखें।", errorQuantity: "1 से 100 तक पूरे लोड चुनें।", errorDate: "आज या आगे की तारीख चुनें।", errorTime: "डिलीवरी का समय चुनें।", errorVehicle: "वाहन चुनें।", saveError: "अनुरोध सेव नहीं हुआ। आपकी जानकारी सुरक्षित है। फिर कोशिश करें या व्हाट्सऐप पर संपर्क करें।", namePlaceholder: "आपका पूरा नाम", phonePlaceholder: "10 अंकों का मोबाइल नंबर", addressPlaceholder: "साइट का पता, इलाका, पिन कोड और पास की पहचान", notesPlaceholder: "साइट का रास्ता, अनलोडिंग या बालू की आवश्यकताएं", coverage: "पटना में डिलीवरी", coverageText: "डिलीवरी क्षेत्र और रास्ते की पुष्टि के लिए साइट की लोकेशन बताएं।", business: "Digit Infra Pvt LTD", businessText: "पटना, बिहार · 800020", availability: "डिलीवरी की उपलब्धता पूछें", availabilityText: "काम के समय और डिलीवरी स्लॉट के लिए कॉल या व्हाट्सऐप करें।", illustration: "निर्माण के उदाहरणात्मक चित्र", back: "ऊपर जाएं", perLoad: "प्रति लोड", saving: "भेजा जा रहा है…", startAgain: "नया अनुरोध भेजें",
+    products: "उपयोग",
     quote: "भाव",
     contact: "संपर्क",
-    rates: "आज का रेट",
+    rates: "वाहनों के रेट",
     eyebrow: "पटना में उसी दिन बालू डिलीवरी",
-    title: "घर, ठेकेदार और कमर्शियल साइट के लिए भरोसेमंद बालू सप्लाई।",
+    title: "पटना में आपकी साइट तक बालू डिलीवरी।",
     lead: "बिना छिपे शुल्क के बालू ऑर्डर करें। साफ रेट, तय समय पर डिलीवरी और Digit Infra टीम से तेज कॉलबैक।",
-    estimateCta: "तुरंत भाव देखें",
+    estimateCta: "भाव मांगें",
     whatsappCta: "व्हाट्सऐप करें",
     productsEyebrow: "हर काम के लिए बालू",
-    productsTitle: "ऑर्डर से पहले सही सामग्री चुनें।",
-    residential: "घरेलू बालू",
-    residentialText: "घर निर्माण, मरम्मत, फ्लोरिंग बेस, छोटे मिस्त्री काम और लैंडस्केपिंग के लिए।",
-    commercial: "कमर्शियल सप्लाई",
-    commercialText: "दुकान, गोदाम, ऑफिस, साइट तैयारी और मेंटेनेंस टीम के लिए तय समय पर सप्लाई।",
-    construction: "निर्माण बालू",
-    constructionText: "ठेकेदार, बिल्डर और सिविल काम के लिए बड़ी मात्रा में भरोसेमंद सप्लाई।",
+    productsTitle: "बताएं, बालू किस काम के लिए चाहिए।",
+    plaster: "प्लास्टर",
+    plasterText: "दीवार या छत के प्लास्टर का काम बताएं, ताकि बालू की जरूरत की पुष्टि की जा सके।",
+    rcc: "आरसीसी (सामान्य)",
+    rccText: "आरसीसी काम के लिए साइट की जरूरत और तय बालू ग्रेड हमारी टीम को बताएं।",
+    terrace: "छत की स्लैब",
+    terraceText: "छत की ढलाई के लिए मात्रा और डिलीवरी का समय बताएं।",
+    raft: "राफ्ट फाउंडेशन",
+    raftText: "नींव के काम के लिए साइट टीम की बताई मात्रा और आवश्यकताओं के अनुसार सप्लाई तय करें।",
     fastQuote: "तेज भाव",
-    quoteTitle: "अपना बालू ऑर्डर अनुमान लगाएं और कन्फर्मेशन के लिए भेजें।",
+    quoteTitle: "अपनी डिलीवरी का अनुमानित भाव देखें।",
     quoteText: "यह केवल अनुमानित भाव है। फाइनल रेट लोकेशन, रास्ता, मात्रा और अनलोडिंग देखकर कन्फर्म होगा।",
     customerName: "ग्राहक का नाम",
     mobile: "मोबाइल नंबर",
     address: "डिलीवरी पता",
-    sandType: "बालू का प्रकार",
+    sandType: "बालू का उपयोग",
     quantity: "मात्रा",
     vehicle: "वाहन",
     timing: "डिलीवरी समय",
     date: "डिलीवरी तारीख",
     time: "डिलीवरी समय",
     notes: "नोट्स",
-    save: "सेव करके व्हाट्सऐप भेजें",
+    save: "भाव का अनुरोध भेजें",
     whatsappOnly: "सिर्फ व्हाट्सऐप भेजें",
     contactTitle: "Digit Infra Pvt LTD से बात करें।",
     saved: "क्वेरी सेव हो गई। कन्फर्मेशन के लिए व्हाट्सऐप खुल रहा है।",
@@ -179,27 +189,99 @@ export default function Home() {
   const [language, setLanguage] = useState("en");
   const [quote, setQuote] = useState(emptyQuote);
   const [pricing, setPricing] = useState(defaultPricing);
+  const [sameDaySurcharge, setSameDaySurcharge] = useState(DEFAULT_SAME_DAY_SURCHARGE);
   const [contactPhone, setContactPhone] = useState(fallbackPhoneNumber);
   const [contactEmail, setContactEmail] = useState(fallbackEmail);
   const [quoteStatus, setQuoteStatus] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [savedLead, setSavedLead] = useState(null);
+  const [errors, setErrors] = useState({});
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const journeyRef = useRef(null);
+  const formVisible = useRef(false);
+  const analyticsContext = useRef({});
   const t = copy[language];
   const phoneNumber = normalizePhoneNumber(contactPhone);
   const displayPhone = formatPhoneNumber(phoneNumber);
 
   const selectedVehicle = pricing.vehicles.find((vehicle) => vehicle.id === quote.vehicleId) || pricing.vehicles[0];
   const selectedRate = Number(selectedVehicle?.price || 0);
-  const total = Math.round(selectedRate * Number(quote.quantity || 1) + (quote.delivery === "Same day" ? 350 : 0));
+  const total = Math.round(selectedRate * Number(quote.quantity || 0) + (quote.delivery === "Same day" ? sameDaySurcharge : 0));
 
-  const tickerItems = useMemo(
-    () =>
-      pricing.vehicles.map((vehicle) => ({
-        key: vehicle.id,
-        label: vehicleLabel(vehicle),
-        value: currency(vehicle.price),
-      })),
-    [pricing.vehicles],
-  );
-
+  const applications = [{ value: "Plaster", key: "plaster" }, { value: "RCC (General)", key: "rcc" }, { value: "Terrace Slab", key: "terrace" }, { value: "Raft Foundation", key: "raft" }];
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
+  function quoteProperties(current = quote) {
+    return { language, application: current.sandType,
+      vehicle_type: ["tractor", "truck6", "truck10", "truck12", "truck16"].includes(current.vehicleId) ? current.vehicleId : current.vehicleId ? "custom" : "unavailable",
+      delivery_type: current.delivery };
+  }
+  analyticsContext.current = quoteProperties();
+  function journey() {
+    if (!journeyRef.current) journeyRef.current = createQuoteJourney(trackQuoteEvent, crypto.randomUUID());
+    return journeyRef.current;
+  }
+  function startJourney(source = "form", current = quote) {
+    const active = journey();
+    if (formVisible.current) active.viewed(quoteProperties(current));
+    active.start(quoteProperties(current), source);
+    return active;
+  }
+  function newJourney() {
+    journeyRef.current = createQuoteJourney(trackQuoteEvent, crypto.randomUUID());
+    if (formVisible.current) journeyRef.current.viewed(quoteProperties());
+    setSavedLead(null);
+  }
+  useEffect(() => {
+    void initAnalytics();
+    const section = document.getElementById("calculator");
+    if (!section || !window.IntersectionObserver) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      formVisible.current = entry.isIntersecting;
+      if (entry.isIntersecting) {
+        if (!journeyRef.current) journeyRef.current = createQuoteJourney(trackQuoteEvent, crypto.randomUUID());
+        journeyRef.current.viewed(analyticsContext.current);
+      }
+    }, { threshold: 0 });
+    observer.observe(section);
+    return () => observer.disconnect();
+  }, []);
+  useEffect(() => {
+    journeyRef.current?.stages(quote, pricing.vehicles.map((vehicle) => vehicle.id), today, analyticsContext.current);
+  }, [quote, pricing, language, today]);
+  function displayVehicle(vehicle) {
+    if (language === "en") return vehicle.name;
+    if (vehicle.id === "tractor") return "ट्रैक्टर लोड";
+    if (/^truck/.test(vehicle.id) && vehicle.wheels) return `${vehicle.wheels} पहियों वाला ट्रक`;
+    return vehicle.name;
+  }
+  useEffect(() => {
+    try { if (localStorage.getItem("sand-language") === "hi") setLanguage("hi"); } catch {}
+    const viewport = window.visualViewport;
+    const resize = () => setKeyboardOpen(viewport ? viewport.height < window.innerHeight * 0.75 : false);
+    viewport?.addEventListener("resize", resize);
+    return () => viewport?.removeEventListener("resize", resize);
+  }, []);
+  function changeLanguage(value) {
+    setLanguage(value);
+    try { localStorage.setItem("sand-language", value); } catch {}
+  }
+  function validate(action = "quote") {
+    const next = {};
+    if (!quote.name.trim()) next.name = t.errorName;
+    if (!/^(?:\+?91|0)?[6-9]\d{9}$/.test(quote.phone.replace(/[ ()-]/g, ""))) next.phone = t.errorPhone;
+    if (!quote.address.trim()) next.address = t.errorAddress;
+    if (!Number.isInteger(Number(quote.quantity)) || Number(quote.quantity) < 1 || Number(quote.quantity) > 100) next.quantity = t.errorQuantity;
+    if (!selectedVehicle) next.vehicleId = t.errorVehicle;
+    if (quote.delivery === "Scheduled") {
+      if (!quote.scheduleDate || quote.scheduleDate < today) next.scheduleDate = t.errorDate;
+    }
+    setErrors(next);
+    if (Object.keys(next).length && action === "quote") journey().event("quote_validation_failed", { ...quoteProperties(), invalid_fields: Object.keys(next) });
+    if (Object.keys(next).length) requestAnimationFrame(() => document.getElementById(`quote-${Object.keys(next)[0]}`)?.focus());
+    return !Object.keys(next).length;
+  }
+  function fieldError(name) { return errors[name] ? <span className="field-error" id={`error-${name}`}>{errors[name]}</span> : null; }
+  function fieldProps(name) { return { id: `quote-${name}`, "aria-invalid": Boolean(errors[name]), "aria-describedby": errors[name] ? `error-${name}` : undefined }; }
   useEffect(() => {
     document.documentElement.lang = language === "hi" ? "hi-IN" : "en-IN";
   }, [language]);
@@ -209,8 +291,8 @@ export default function Home() {
       if (!isSupabaseConfigured) return;
 
       const [pricingResult, phoneResult] = await Promise.all([
-        supabase.from("pricing").select("*").order("price_date", { ascending: false }).limit(1).maybeSingle(),
-        supabase.from("site_settings").select("key, value").in("key", ["contact_phone", "contact_email"]),
+        supabase.from("pricing").select("*").lte("price_date", new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date())).order("price_date", { ascending: false }).limit(1).maybeSingle(),
+        supabase.from("site_settings").select("key, value").in("key", ["contact_phone", "contact_email", "same_day_surcharge"]),
       ]);
 
       if (!pricingResult.error && pricingResult.data) {
@@ -224,6 +306,7 @@ export default function Home() {
 
       if (!phoneResult.error && Array.isArray(phoneResult.data)) {
         const settings = Object.fromEntries(phoneResult.data.map((row) => [row.key, row.value]));
+        setSameDaySurcharge(getSameDaySurcharge(settings.same_day_surcharge));
         if (settings.contact_phone) setContactPhone(normalizePhoneNumber(settings.contact_phone));
         if (settings.contact_email) setContactEmail(String(settings.contact_email));
       }
@@ -232,11 +315,15 @@ export default function Home() {
     loadPageData();
   }, []);
 
-  function updateQuote(field, value) {
+  function updateQuote(field, value, source = "form") {
+    if (journeyRef.current?.completed) newJourney();
+    startJourney(source, { ...quote, [field]: value });
+    setSavedLead(null);
+    setErrors((current) => ({ ...current, [field]: undefined }));
     setQuote((current) => ({
       ...current,
       [field]: value,
-      ...(field === "delivery" && value !== "Scheduled" ? { scheduleDate: "", scheduleTime: "" } : {}),
+      ...(field === "delivery" && value !== "Scheduled" ? { scheduleDate: "" } : {}),
     }));
   }
 
@@ -253,33 +340,42 @@ export default function Home() {
 
   function leadMessage(lead) {
     return [
-      "New sand requirement",
-      `Name: ${lead.name}`,
-      `Phone: ${lead.phone}`,
-      `Address: ${lead.address}`,
-      `Material: ${lead.sandType}`,
-      `Vehicle: ${lead.vehicleName}`,
-      `Quantity: ${lead.quantity}`,
-      `Rate date: ${lead.priceDate}`,
-      `Rate: ${currency(lead.rate)}`,
-      `Timing: ${lead.delivery}`,
-      lead.scheduleDate ? `Scheduled date: ${lead.scheduleDate}` : "",
-      lead.scheduleTime ? `Scheduled time: ${lead.scheduleTime}` : "",
-      `Estimate: ${currency(lead.total)}`,
-      lead.notes ? `Notes: ${lead.notes}` : "",
+      language === "hi" ? "बालू की नई जरूरत" : "New sand requirement",
+      lead.id ? `${t.reference}: ${lead.id}` : "",
+      `${t.customerName}: ${lead.name}`,
+      `${t.mobile}: ${lead.phone}`,
+      `${t.address}: ${lead.address}`,
+      `${t.sandType}: ${t[applications.find((item) => item.value === lead.sandType)?.key] || lead.sandType}`,
+      `${t.vehicle}: ${lead.vehicleName}`,
+      `${t.loads}: ${lead.quantity}`,
+      `${t.updated}: ${lead.priceDate || t.examples}`,
+      `${t.rates}: ${currency(lead.rate)}`,
+      lead.scheduleDate ? `${t.date}: ${lead.scheduleDate}` : "",
+      `${t.estimatedTotal}: ${currency(lead.total)}`,
+      lead.notes ? `${t.notes}: ${lead.notes}` : "",
     ]
       .filter(Boolean)
       .join("\n");
   }
 
-  function openWhatsApp(lead) {
+  function openWhatsApp(lead, location = "quote_form") {
+    journey().event("whatsapp_clicked", { ...quoteProperties(lead), whatsapp_location: location });
     window.open(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(leadMessage(lead))}`, "_blank", "noopener,noreferrer");
   }
 
   async function saveQuote(event) {
     event.preventDefault();
+    if (saving) return;
+    const activeJourney = startJourney();
+    activeJourney.event("quote_submit_attempted", quoteProperties());
+    if (!validate()) return;
+    activeJourney.stages(quote, pricing.vehicles.map((vehicle) => vehicle.id), today, quoteProperties());
+    setQuoteStatus("");
+    setSaving(true);
+    setSavedLead(null);
     const lead = currentLead();
 
+    let failureType = "network";
     try {
       const response = await fetch("/api/queries", {
         method: "POST",
@@ -287,18 +383,25 @@ export default function Home() {
         body: JSON.stringify(lead),
       });
 
+      failureType = "server";
       if (!response.ok) {
         const data = await response.json().catch(() => null);
         throw new Error(data?.error || "Could not save enquiry.");
       }
 
-      setQuoteStatus(t.saved);
+      const result = await response.json();
+      if (!result.success || !result.id) throw new Error("Invalid save response");
+      activeJourney.saved(quoteProperties(lead));
+      setSavedLead({ ...lead, ...result });
+      setQuoteStatus("");
+      requestAnimationFrame(() => document.getElementById("quote-success")?.focus());
+      setQuote({ ...emptyQuote, vehicleId: pricing.vehicles[0]?.id || "" });
     } catch (error) {
-      setQuoteStatus(`${error.message} Opening WhatsApp instead.`);
+      activeJourney.event("quote_save_failed", { ...quoteProperties(lead), failure_type: failureType });
+      setQuoteStatus(t.saveError);
+    } finally {
+      setSaving(false);
     }
-
-    openWhatsApp(lead);
-    setQuote({ ...emptyQuote, vehicleId: pricing.vehicles[0]?.id || "" });
   }
 
   return (
@@ -317,10 +420,10 @@ export default function Home() {
           <a href="#contact">{t.contact}</a>
         </nav>
         <div className="language-toggle" role="group" aria-label="Language selector">
-          <button className={language === "en" ? "active" : ""} type="button" onClick={() => setLanguage("en")}>
+          <button className={language === "en" ? "active" : ""} type="button" aria-pressed={language === "en"} onClick={() => changeLanguage("en")}>
             English
           </button>
-          <button className={language === "hi" ? "active" : ""} type="button" onClick={() => setLanguage("hi")}>
+          <button className={language === "hi" ? "active" : ""} type="button" aria-pressed={language === "hi"} onClick={() => changeLanguage("hi")}>
             हिंदी
           </button>
         </div>
@@ -329,31 +432,10 @@ export default function Home() {
         </a>
       </header>
 
-      <section className="ticker" aria-label="Today vehicle price banner">
-        <div className="ticker-badge">
-          <span className="live-dot" aria-hidden="true" />
-          <strong>
-            {t.rates} · {pricing.priceDate}
-          </strong>
-        </div>
-        <div className="ticker-track">
-          <span>
-            {tickerItems.map((item) => (
-              <em key={item.key}>
-                {item.label} <b>{item.value}</b>
-              </em>
-            ))}
-          </span>
-          <span aria-hidden="true">
-            {tickerItems.map((item) => (
-              <em key={item.key}>
-                {item.label} <b>{item.value}</b>
-              </em>
-            ))}
-          </span>
-        </div>
+      <section className="ticker" aria-label={t.rates}>
+        <div className="ticker-badge"><span className="rates-indicator" aria-hidden="true" /><strong>{pricing.priceDate ? `${pricing.priceDate === today ? (language === "hi" ? "आज के रेट" : "Today rates") : t.rates} · ${pricing.priceDate}` : t.examples}</strong></div>
+        <div className="ticker-track">{[0, 1].map((repeat) => <span key={repeat} aria-hidden={repeat === 1 ? true : undefined}>{pricing.vehicles.map((vehicle) => <em key={vehicle.id}>{displayVehicle(vehicle)} <b>{currency(vehicle.price)}</b></em>)}</span>)}</div>
       </section>
-
       <main id="home">
         <section className="hero">
           <div className="hero-media" role="img" aria-label="Sand delivery truck at a construction site" />
@@ -365,44 +447,22 @@ export default function Home() {
               <a className="button primary" href="#calculator">
                 {t.estimateCta}
               </a>
-              <a className="button secondary" href={`https://wa.me/${phoneNumber}`} target="_blank" rel="noreferrer">
-                <WhatsAppIcon />
-                {t.whatsappCta}
-              </a>
             </div>
           </div>
         </section>
 
-        <div className="mobile-cta" aria-label="Quick contact actions">
-          <a href={`tel:+${phoneNumber}`}>Call</a>
-          <a href={`https://wa.me/${phoneNumber}`} target="_blank" rel="noreferrer">
-            <WhatsAppIcon />
-            WhatsApp
-          </a>
+        <div className={`mobile-cta ${keyboardOpen ? "keyboard-open" : ""}`} aria-label={t.contact}>
+          <a href={`tel:+${phoneNumber}`}>{t.call}</a>
+          <a href={`https://wa.me/${phoneNumber}`} target="_blank" rel="noreferrer" onClick={() => trackQuoteEvent("whatsapp_clicked", { language, whatsapp_location: "mobile_bar" })}><WhatsAppIcon /> WhatsApp</a>
+          <a href="#calculator">{t.estimateCta}</a>
         </div>
-
         <section id="products" className="section">
           <div className="section-heading">
             <p className="eyebrow">{t.productsEyebrow}</p>
             <h2>{t.productsTitle}</h2>
           </div>
-          <div className="product-grid">
-            <ProductCard
-              image="https://static.wixstatic.com/media/089437_1ebc91aae6414e9cabca7ae1722c8ae2~mv2.jpg/v1/fill/w_900,h_600,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/IMG-20230116-WA0004.jpg"
-              title={t.residential}
-              text={t.residentialText}
-            />
-            <ProductCard
-              image="https://static.wixstatic.com/media/089437_2541a4bf378c4963b1c0afe9b979a272~mv2.jpg/v1/fill/w_900,h_600,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/josh-withers--c4MV3rKm9c-unsplash.jpg"
-              title={t.commercial}
-              text={t.commercialText}
-            />
-            <ProductCard
-              image="https://static.wixstatic.com/media/089437_ca446ad21105402f83d7c0fa48a8081c~mv2.jpg/v1/fill/w_900,h_600,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/jandira-sonnendeck-0DUxxHkRucs-unsplash.jpg"
-              title={t.construction}
-              text={t.constructionText}
-            />
-          </div>
+          <p className="muted">{t.illustration}</p>
+          <div className="product-grid">{applications.map(({ value, key }) => <ProductCard key={key} image={`/images/${key}.jpg`} title={t[key]} text={t[`${key}Text`]} selected={quote.sandType === value} action={quote.sandType === value ? t.selected : t.choose} onSelect={() => updateQuote("sandType", value)} />)}</div>
         </section>
 
         <section id="calculator" className="section quote-section">
@@ -412,127 +472,66 @@ export default function Home() {
             <p>{t.quoteText}</p>
           </div>
 
-          <form className="quote-form" onSubmit={saveQuote}>
-            <div className="field-pair">
-              <label>
-                {t.customerName}
-                <input value={quote.name} onChange={(event) => updateQuote("name", event.target.value)} required />
-              </label>
-              <label>
-                {t.mobile}
-                <input value={quote.phone} onChange={(event) => updateQuote("phone", event.target.value)} type="tel" required />
-              </label>
-            </div>
-            <label>
-              {t.address}
-              <textarea value={quote.address} onChange={(event) => updateQuote("address", event.target.value)} rows="3" required />
-            </label>
-            <div className="field-pair">
-              <label>
-                {t.sandType}
-                <select value={quote.sandType} onChange={(event) => updateQuote("sandType", event.target.value)}>
-                  <option value="Residential Sand">Residential Sand</option>
-                  <option value="Commercial Sand">Commercial Sand</option>
-                  <option value="Construction Sand">Construction Sand</option>
-                </select>
-              </label>
-              <label>
-                {t.quantity}
-                <input
-                  value={quote.quantity}
-                  onChange={(event) => updateQuote("quantity", event.target.value)}
-                  type="number"
-                  min="1"
-                  max="100"
-                  required
-                />
-              </label>
-            </div>
-            <div className="field-pair">
-              <label>
-                {t.vehicle}
-                <select value={quote.vehicleId} onChange={(event) => updateQuote("vehicleId", event.target.value)}>
-                  {pricing.vehicles.map((vehicle) => (
-                    <option key={vehicle.id} value={vehicle.id}>
-                      {vehicleLabel(vehicle)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                {t.timing}
-                <select value={quote.delivery} onChange={(event) => updateQuote("delivery", event.target.value)}>
-                  <option value="Same day">Same day</option>
-                  <option value="Tomorrow">Tomorrow</option>
-                  <option value="Scheduled">Scheduled</option>
-                </select>
-              </label>
-            </div>
-            {quote.delivery === "Scheduled" ? (
-              <div className="field-pair schedule-fields">
-                <label>
-                  {t.date}
-                  <input
-                    value={quote.scheduleDate}
-                    onChange={(event) => updateQuote("scheduleDate", event.target.value)}
-                    type="date"
-                    required
-                  />
-                </label>
-                <label>
-                  {t.time}
-                  <input
-                    value={quote.scheduleTime}
-                    onChange={(event) => updateQuote("scheduleTime", event.target.value)}
-                    type="time"
-                    required
-                  />
-                </label>
-              </div>
-            ) : null}
-            <label>
-              {t.notes}
-              <textarea value={quote.notes} onChange={(event) => updateQuote("notes", event.target.value)} rows="2" />
-            </label>
-            <output className="estimate">
-              Estimated total: {currency(total)} ({currency(selectedRate)} per {selectedVehicle?.name || "vehicle"})
-            </output>
-            <div className="form-actions">
-              <button className="button primary" type="submit">
-                {t.save}
-              </button>
-              <button className="button secondary" type="button" onClick={() => openWhatsApp(currentLead())}>
-                <WhatsAppIcon />
-                {t.whatsappOnly}
-              </button>
-            </div>
-            <p className="status-text" role="status">
-              {quoteStatus}
-            </p>
-          </form>
+          <div>
+          {savedLead ? <section className="success-panel" data-clarity-mask="true" id="quote-success" tabIndex={-1} aria-labelledby="success-title">
+            <span className="success-check" aria-hidden="true">✓</span><h3 id="success-title">{t.savedTitle}</h3><p>{t.nextSteps}</p>
+            <small>{t.reference}</small><code>{savedLead.id}</code><p>{t.estimatedTotal}: <strong>{currency(savedLead.total)}</strong></p>
+            <button className="button primary" onClick={() => openWhatsApp(savedLead, "saved_confirmation")}><WhatsAppIcon />{t.sendDetails}</button>
+            <button className="button secondary" onClick={newJourney}>{t.startAgain}</button>
+          </section> : <form className="quote-form" onSubmit={saveQuote} noValidate data-clarity-mask="true">
+            <fieldset><legend><span>01</span>{t.requirement}</legend>
+              <div className="field-pair"><label>{t.sandType}<select value={quote.sandType} onChange={(event) => updateQuote("sandType", event.target.value)}>{applications.map(({ value, key }) => <option key={key} value={value}>{t[key]}</option>)}</select></label>
+              <div className="quantity-field">
+                <label htmlFor="quote-quantity">{t.loads}</label>
+                <div className="quantity-stepper">
+                  <button type="button" aria-label={language === "hi" ? "एक लोड कम करें" : "Decrease loads"} disabled={Number(quote.quantity) <= 1} onClick={() => updateQuote("quantity", Math.max(1, (Number(quote.quantity) || 1) - 1))}>−</button>
+                  <input {...fieldProps("quantity")} value={quote.quantity} onChange={(event) => updateQuote("quantity", event.target.value)} type="number" inputMode="numeric" min="1" max="100" step="1" required aria-describedby={errors.quantity ? "error-quantity quantity-help" : "quantity-help"} />
+                  <button type="button" aria-label={language === "hi" ? "एक लोड बढ़ाएं" : "Increase loads"} disabled={Number(quote.quantity) >= 100} onClick={() => updateQuote("quantity", Math.min(100, (Number(quote.quantity) || 0) + 1))}>+</button>
+                </div>
+                <small className="muted" id="quantity-help">{language === "hi" ? "लोड की संख्या लिखें या + / − दबाएं (1–100)।" : "Type a number or use + / − (1–100 loads)."}</small>
+                {fieldError("quantity")}
+              </div></div>
+              <fieldset className="vehicle-fieldset"><legend>{t.vehicle}</legend><div className="vehicle-options">{pricing.vehicles.map((vehicle) => <label className={`vehicle-option ${quote.vehicleId === vehicle.id ? "selected" : ""}`} key={vehicle.id}><input type="radio" name="vehicle" value={vehicle.id} checked={quote.vehicleId === vehicle.id} onChange={() => updateQuote("vehicleId", vehicle.id)} /><span>{displayVehicle(vehicle)}<strong>{currency(vehicle.price)}</strong></span></label>)}</div><small className="muted">{t.capacity}</small>{fieldError("vehicleId")}</fieldset>
+            </fieldset>
+            <fieldset><legend><span>02</span>{t.deliveryDetails}</legend>
+              <label>{t.address}<textarea {...fieldProps("address")} value={quote.address} onChange={(event) => updateQuote("address", event.target.value)} placeholder={t.addressPlaceholder} autoComplete="street-address" maxLength={1000} rows="3" required />{fieldError("address")}</label>
+              <label>{t.timing}<select value={quote.delivery} onChange={(event) => updateQuote("delivery", event.target.value)}><option value="Same day">{t.sameDay}</option><option value="Tomorrow">{t.tomorrow}</option><option value="Scheduled">{t.scheduled}</option></select></label>
+              {quote.delivery === "Scheduled" && <div><label>{t.date}<input {...fieldProps("scheduleDate")} type="date" min={today} value={quote.scheduleDate} onChange={(event) => updateQuote("scheduleDate", event.target.value)} required />{fieldError("scheduleDate")}</label></div>}
+              <label>{t.notes} ({t.optional})<textarea value={quote.notes} onChange={(event) => updateQuote("notes", event.target.value)} placeholder={t.notesPlaceholder} maxLength={2000} rows="2" /></label>
+            </fieldset>
+            <fieldset><legend><span>03</span>{t.contactDetails}</legend><div className="field-pair">
+              <label>{t.customerName}<input {...fieldProps("name")} value={quote.name} onChange={(event) => updateQuote("name", event.target.value)} placeholder={t.namePlaceholder} autoComplete="name" maxLength={100} required />{fieldError("name")}</label>
+              <label>{t.mobile}<input {...fieldProps("phone")} value={quote.phone} onChange={(event) => updateQuote("phone", event.target.value)} placeholder={t.phonePlaceholder} type="tel" inputMode="tel" autoComplete="tel" maxLength={20} required />{fieldError("phone")}</label>
+            </div></fieldset>
+            <section className="estimate-summary" aria-labelledby="estimate-title"><h3 id="estimate-title">{t.estimate}</h3><p className="muted">{pricing.priceDate ? `${t.updated}: ${pricing.priceDate}` : t.examples}</p><dl><div><dt>{t.subtotal} ({currency(selectedRate)} × {quote.quantity || 0})</dt><dd>{currency(selectedRate * Number(quote.quantity || 0))}</dd></div><div><dt>{t.surcharge}</dt><dd>{currency(quote.delivery === "Same day" ? sameDaySurcharge : 0)}</dd></div><div className="estimate-total"><dt>{t.estimatedTotal}</dt><dd><output>{currency(total)}</output></dd></div></dl><p className="muted">{t.priceNote}</p></section>
+            <div className="form-actions"><button className="button primary" type="submit" disabled={saving} aria-busy={saving}>{saving ? t.saving : t.save}</button><button className="button secondary" type="button" onClick={() => { startJourney(); if (validate("whatsapp")) openWhatsApp(currentLead()); }}><WhatsAppIcon />{t.whatsappOnly}</button></div>
+            {quoteStatus && <p className="field-error" role="alert">{quoteStatus}</p>}
+          </form>}
+          </div>
         </section>
 
+        <section className="service-details section" aria-label={t.contact}><article><span>01</span><h3>{t.coverage}</h3><p>{t.coverageText}</p></article><article><span>02</span><h3>{t.business}</h3><p>{t.businessText}</p></article><article><span>03</span><h3>{t.availability}</h3><p>{t.availabilityText}</p></article></section>
         <section id="contact" className="section contact-section">
           <div>
             <p className="eyebrow">{t.contact}</p>
             <h2>{t.contactTitle}</h2>
-            <p>Patna Bihar, 800020</p>
+            <p>{t.businessText}</p>
           </div>
           <div className="contact-cards">
             <a href={`tel:+${phoneNumber}`}>
-              <strong>Phone</strong>
+              <strong>{t.call}</strong>
               <span>{displayPhone}</span>
             </a>
             <a href={`mailto:${contactEmail}`}>
-              <strong>Email</strong>
+              <strong>{t.email}</strong>
               <span>{contactEmail}</span>
             </a>
-            <a href={`https://wa.me/${phoneNumber}`} target="_blank" rel="noreferrer">
+            <a href={`https://wa.me/${phoneNumber}`} target="_blank" rel="noreferrer" onClick={() => trackQuoteEvent("whatsapp_clicked", { language, whatsapp_location: "contact_section" })}>
               <strong>
                 <WhatsAppIcon />
                 WhatsApp
               </strong>
-              <span>Send your requirement</span>
+              <span>{t.sendDetails}</span>
             </a>
           </div>
         </section>
@@ -540,20 +539,21 @@ export default function Home() {
 
       <footer className="site-footer">
         <p>Copyright {new Date().getFullYear()} Digit Infra Pvt LTD. Sand At Your Door.</p>
-        <a href="#home">Back to top</a>
+        <a href="#home">{t.back}</a>
       </footer>
     </>
   );
 }
 
-function ProductCard({ image, title, text }) {
+function ProductCard({ image, title, text, selected, action, onSelect }) {
   return (
-    <article className="product-card">
-      <Image src={image} alt={title} width={900} height={600} sizes="(max-width: 980px) 50vw, 33vw" />
+    <a className={`product-card ${selected ? "selected" : ""}`} href="#calculator" onClick={onSelect} aria-label={`${action}: ${title}`}>
+      <Image src={image} alt={title} width={900} height={600} sizes="(max-width: 640px) 100vw, (max-width: 980px) 50vw, 25vw" />
       <div>
         <h3>{title}</h3>
         <p>{text}</p>
+        <span className="card-action">{action} <span aria-hidden="true">→</span></span>
       </div>
-    </article>
+    </a>
   );
 }

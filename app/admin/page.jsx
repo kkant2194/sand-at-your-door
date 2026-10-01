@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { isSupabaseConfigured, supabase } from "../../lib/supabaseClient";
 
+import { DEFAULT_SAME_DAY_SURCHARGE, getSameDaySurcharge, parseSameDaySurcharge } from "../../lib/deliveryPricing";
+
 const defaultVehicles = [
   { id: "tractor", name: "Tractor load", wheels: 2, price: 4200 },
   { id: "truck6", name: "6-wheel truck", wheels: 6, price: 12500 },
@@ -12,7 +14,7 @@ const defaultVehicles = [
 ];
 
 const defaultPricing = {
-  priceDate: new Date().toISOString().slice(0, 10),
+  priceDate: new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date()),
   vehicles: defaultVehicles,
 };
 
@@ -78,12 +80,29 @@ export default function AdminPage() {
   const [profile, setProfile] = useState(null);
   const [authForm, setAuthForm] = useState(emptyAuth);
   const [pricing, setPricing] = useState(defaultPricing);
-  const [settings, setSettings] = useState({ contactPhone: fallbackPhoneNumber, contactEmail: fallbackEmail });
+  const [settings, setSettings] = useState({ contactPhone: fallbackPhoneNumber, contactEmail: fallbackEmail, sameDaySurcharge: DEFAULT_SAME_DAY_SURCHARGE });
   const [queries, setQueries] = useState([]);
   const [authStatus, setAuthStatus] = useState("");
   const [pricingStatus, setPricingStatus] = useState("");
   const [settingsStatus, setSettingsStatus] = useState("");
 
+  const [activeTab, setActiveTab] = useState("enquiries");
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [loadingQueries, setLoadingQueries] = useState(false);
+  const [queryStatus, setQueryStatus] = useState("");
+  const [busy, setBusy] = useState("");
+  const [checkingSession, setCheckingSession] = useState(true);
+  const statuses = ["new", "contacted", "confirmed", "delivered", "cancelled"];
+  const filteredQueries = queries.filter((query) => (statusFilter === "all" || query.status === statusFilter) && [query.name, query.phone, query.address, query.sand_type, query.id].some((value) => String(value || "").toLowerCase().includes(search.toLowerCase())));
+  async function runAction(name, action, event) {
+    event?.preventDefault();
+    if (busy) return;
+    setBusy(name);
+    try { await action(event || { preventDefault() {} }); }
+    catch { if (name === "auth") setAuthStatus("Unable to connect. Please retry."); else if (name === "pricing") setPricingStatus("Could not save prices. Please retry."); else if (name === "settings") setSettingsStatus("Could not save settings. Please retry."); else setQueryStatus("Unable to update this enquiry. Please retry."); }
+    finally { setBusy(""); }
+  }
   const isAdmin = Boolean(profile?.is_admin);
 
   useEffect(() => {
@@ -101,7 +120,7 @@ export default function AdminPage() {
       await Promise.all([loadPricing(), loadSiteSettings()]);
     }
 
-    bootstrap();
+    bootstrap().catch(() => setAuthStatus("Could not restore your session. Please sign in again.")).finally(() => setCheckingSession(false));
 
     if (!isSupabaseConfigured) return undefined;
 
@@ -122,7 +141,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (isAdmin) {
-      loadQueries();
+      loadQueries().catch(() => setQueryStatus("Could not load enquiries. Please refresh."));
     }
   }, [isAdmin]);
 
@@ -139,6 +158,8 @@ export default function AdminPage() {
       setProfile(data.profile);
       setAuthStatus(data.profile?.is_admin ? "Admin access active." : "Access denied.");
     } else {
+      setProfile(null);
+      setQueries([]);
       setAuthStatus(data?.error || "Could not load admin profile.");
     }
   }
@@ -181,24 +202,26 @@ export default function AdminPage() {
   async function loadSiteSettings() {
     if (!isSupabaseConfigured) return;
 
-    const { data, error } = await supabase.from("site_settings").select("key, value").in("key", ["contact_phone", "contact_email"]);
+    const { data, error } = await supabase.from("site_settings").select("key, value").in("key", ["contact_phone", "contact_email", "same_day_surcharge"]);
     if (!error && Array.isArray(data)) {
       const loadedSettings = Object.fromEntries(data.map((row) => [row.key, row.value]));
       setSettings({
         contactPhone: normalizePhoneNumber(loadedSettings.contact_phone),
         contactEmail: loadedSettings.contact_email || fallbackEmail,
+        sameDaySurcharge: getSameDaySurcharge(loadedSettings.same_day_surcharge),
       });
     }
   }
 
   async function loadQueries() {
-    const { data, error } = await supabase
-      .from("user_queries")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(200);
-
-    if (!error) setQueries(data || []);
+    setLoadingQueries(true);
+    setQueryStatus("");
+    try {
+      const { data, error } = await supabase.from("user_queries").select("*").order("created_at", { ascending: false }).limit(200);
+      if (error) setQueryStatus("Could not load enquiries. Please refresh.");
+      else setQueries(data || []);
+    } catch { setQueryStatus("Could not load enquiries. Check your connection and refresh."); }
+    finally { setLoadingQueries(false); }
   }
 
   function addVehicle() {
@@ -245,8 +268,8 @@ export default function AdminPage() {
         price: Number(vehicle.price || 0),
       }));
 
-    if (!vehicles.length) {
-      setPricingStatus("Add at least one vehicle.");
+    if (!vehicles.length || vehicles.some((vehicle) => !Number.isFinite(vehicle.price) || vehicle.price <= 0 || !Number.isInteger(vehicle.wheels))) {
+      setPricingStatus("Add at least one vehicle with a positive price and a whole wheel count.");
       return;
     }
 
@@ -275,6 +298,11 @@ export default function AdminPage() {
       return;
     }
 
+    const sameDaySurcharge = parseSameDaySurcharge(settings.sameDaySurcharge);
+    if (sameDaySurcharge === null) {
+      setSettingsStatus("Enter a whole-rupee surcharge between ₹0 and ₹100,000.");
+      return;
+    }
     const contactPhone = normalizePhoneNumber(settings.contactPhone);
     const contactEmail = String(settings.contactEmail || "").trim() || fallbackEmail;
     const { error } = await supabase.from("site_settings").upsert(
@@ -289,6 +317,7 @@ export default function AdminPage() {
           value: contactEmail,
           updated_by: user.id,
         },
+        { key: "same_day_surcharge", value: String(sameDaySurcharge), updated_by: user.id },
       ],
       { onConflict: "key" },
     );
@@ -298,227 +327,33 @@ export default function AdminPage() {
       return;
     }
 
-    setSettings({ contactPhone, contactEmail });
-    setSettingsStatus(`Contact details saved: ${formatPhoneNumber(contactPhone)} and ${contactEmail}.`);
+    setSettings({ contactPhone, contactEmail, sameDaySurcharge });
+    setSettingsStatus(`Website settings saved. Same-day surcharge: ${currency(sameDaySurcharge)}.`);
   }
 
   async function updateQueryStatus(id, status) {
     const { error } = await supabase.from("user_queries").update({ status }).eq("id", id);
-    if (!error) await loadQueries();
+    if (!error) { await loadQueries(); setQueryStatus("Enquiry status updated."); }
+    else setQueryStatus("Could not update enquiry status. Please retry.");
   }
 
   return (
-    <>
-      <header className="site-header">
-        <a className="brand" href="/" aria-label="Sand At Your Door home">
-          <span className="brand-mark">SA</span>
-          <span>
-            <strong>Admin</strong>
-            <small>Sand At Your Door</small>
-          </span>
-        </a>
-        <nav className="main-nav" aria-label="Admin navigation">
-          <a href="/">Public site</a>
-          {isAdmin ? <a href="#settings">Settings</a> : null}
-          {isAdmin ? <a href="#pricing">Pricing</a> : null}
-          {isAdmin ? <a href="#enquiries">Enquiries</a> : null}
-        </nav>
-        {user ? (
-          <button className="button secondary" type="button" onClick={handleLogout}>
-            Sign out
-          </button>
-        ) : null}
-      </header>
-
-      <main>
-        <section className="section account-section">
-          <div>
-            <p className="eyebrow">Admin portal</p>
-            <h1>Admin dashboard.</h1>
-            <p className="status-text">This page is restricted to users with admin permission.</p>
-          </div>
-
-          {user ? (
-            <div className="profile-card">
-              <strong>{isAdmin ? "Admin access active" : "Access denied"}</strong>
-              <span className="status-text">{user.email}</span>
-              <p className="status-text">{authStatus}</p>
-            </div>
-          ) : (
-            <form className="auth-form" onSubmit={handleAuth}>
-              <label>
-                Owner email
-                <input
-                  value={authForm.email}
-                  onChange={(event) => setAuthForm({ ...authForm, email: event.target.value })}
-                  type="email"
-                  required
-                />
-              </label>
-              <label>
-                Password
-                <input
-                  value={authForm.password}
-                  onChange={(event) => setAuthForm({ ...authForm, password: event.target.value })}
-                  type="password"
-                  minLength="6"
-                  required
-                />
-              </label>
-              <button className="button primary" type="submit">
-                Sign in
-              </button>
-              <p className="status-text">{authStatus}</p>
-            </form>
-          )}
-        </section>
-
-        {isAdmin ? (
-          <>
-            <section id="settings" className="section admin-section">
-              <div className="admin-copy">
-                <p className="eyebrow">Site settings</p>
-                <h2>Update public contact details.</h2>
-                <p>These details are used for phone, WhatsApp, and email actions on the public website.</p>
-              </div>
-              <form className="admin-form" onSubmit={saveSettings}>
-                <label>
-                  Contact phone number
-                  <input
-                    value={settings.contactPhone}
-                    onChange={(event) => setSettings((current) => ({ ...current, contactPhone: event.target.value }))}
-                    type="tel"
-                    inputMode="numeric"
-                    placeholder="917259987874"
-                    required
-                  />
-                </label>
-                <p className="status-text">Current display: {formatPhoneNumber(settings.contactPhone)}</p>
-                <label>
-                  Contact email
-                  <input
-                    value={settings.contactEmail}
-                    onChange={(event) => setSettings((current) => ({ ...current, contactEmail: event.target.value }))}
-                    type="email"
-                    placeholder="digitInfra@gmail.com"
-                    required
-                  />
-                </label>
-                <div className="form-actions">
-                  <button className="button primary" type="submit">
-                    Save contact details
-                  </button>
-                </div>
-                <p className="status-text">{settingsStatus}</p>
-              </form>
-            </section>
-
-            <section id="pricing" className="section admin-section">
-              <div className="admin-copy">
-                <p className="eyebrow">Daily pricing</p>
-                <h2>Add vehicles and update today&apos;s rates.</h2>
-                <p>Each vehicle can have its own wheel count and daily price.</p>
-              </div>
-              <form className="admin-form" onSubmit={savePricing}>
-                <label>
-                  Price date
-                  <input
-                    type="date"
-                    value={pricing.priceDate}
-                    onChange={(event) => setPricing((current) => ({ ...current, priceDate: event.target.value }))}
-                    required
-                  />
-                </label>
-                <div className="vehicle-editor">
-                  {pricing.vehicles.map((vehicle) => (
-                    <article key={vehicle.id} className="vehicle-row">
-                      <label>
-                        Vehicle name
-                        <input value={vehicle.name} onChange={(event) => updateVehicle(vehicle.id, "name", event.target.value)} />
-                      </label>
-                      <label>
-                        Wheels
-                        <input
-                          value={vehicle.wheels}
-                          onChange={(event) => updateVehicle(vehicle.id, "wheels", event.target.value)}
-                          type="number"
-                          min="0"
-                        />
-                      </label>
-                      <label>
-                        Price
-                        <input
-                          value={vehicle.price}
-                          onChange={(event) => updateVehicle(vehicle.id, "price", event.target.value)}
-                          type="number"
-                          min="0"
-                          step="50"
-                        />
-                      </label>
-                      <button className="button text" type="button" onClick={() => removeVehicle(vehicle.id)}>
-                        Remove
-                      </button>
-                    </article>
-                  ))}
-                </div>
-                <div className="form-actions">
-                  <button className="button secondary" type="button" onClick={addVehicle}>
-                    Add vehicle
-                  </button>
-                  <button className="button primary" type="submit">
-                    Save daily prices
-                  </button>
-                </div>
-                <p className="status-text">{pricingStatus}</p>
-              </form>
-            </section>
-
-            <section id="enquiries" className="section admin-section">
-              <div className="admin-copy">
-                <p className="eyebrow">Customer enquiries</p>
-                <h2>Latest saved leads from the quote form.</h2>
-                <button className="button secondary" type="button" onClick={loadQueries}>
-                  Refresh
-                </button>
-              </div>
-              <div className="lead-list">
-                {queries.length ? (
-                  queries.map((query) => (
-                    <article key={query.id}>
-                      <div>
-                        <strong>
-                          {query.name} · {query.phone}
-                        </strong>
-                        <p>{query.address}</p>
-                        <p>
-                          {query.sand_type} · {query.unit_label || query.unit} · {currency(query.total)}
-                        </p>
-                        <small>{new Date(query.created_at).toLocaleString("en-IN")}</small>
-                      </div>
-                      <label>
-                        Status
-                        <select value={query.status || "new"} onChange={(event) => updateQueryStatus(query.id, event.target.value)}>
-                          <option value="new">New</option>
-                          <option value="contacted">Contacted</option>
-                          <option value="confirmed">Confirmed</option>
-                          <option value="delivered">Delivered</option>
-                          <option value="cancelled">Cancelled</option>
-                        </select>
-                      </label>
-                    </article>
-                  ))
-                ) : (
-                  <div className="price-summary">
-                    <article>
-                      <span>No saved enquiries yet</span>
-                    </article>
-                  </div>
-                )}
-              </div>
-            </section>
-          </>
-        ) : null}
-      </main>
-    </>
+    <div className="admin-shell">
+      <header className="admin-header"><a className="brand" href="/admin"><span className="brand-mark">SA</span><span><strong>Sand At Your Door</strong><small>Business dashboard</small></span></a><div className="admin-header-actions"><a href="/" className="button secondary">View website ↗</a>{user && <button className="button secondary" disabled={Boolean(busy)} onClick={() => runAction("logout", handleLogout)}>Sign out</button>}</div></header>
+      <main className="admin-main">
+        {checkingSession ? <div className="admin-empty" role="status">Checking your session…</div> : !isAdmin ? <section className="admin-login">
+          <div className="admin-login-copy"><p className="eyebrow">Digit Infra Pvt LTD</p><h1>Your business,<br />in one place.</h1><p>Manage incoming enquiries, keep vehicle rates up to date, and update your public contact details.</p><div className="admin-login-features"><span>01 · Customer enquiries</span><span>02 · Vehicle pricing</span><span>03 · Website settings</span></div></div>
+          {user ? <div className="admin-panel"><h2>Admin access required</h2><p>{user.email}</p><p role="status">{authStatus || "This account does not have admin permission."}</p></div> : <form className="admin-panel admin-login-form" onSubmit={(event) => runAction("auth", handleAuth, event)}><p className="eyebrow">Admin portal</p><h2>Welcome back</h2><p className="muted">Sign in with your approved admin account.</p><label>Email address<input type="email" autoComplete="username" placeholder="you@company.com" value={authForm.email} onChange={(event) => setAuthForm({ ...authForm, email: event.target.value })} required /></label><label>Password<input type="password" autoComplete="current-password" placeholder="Enter your password" value={authForm.password} onChange={(event) => setAuthForm({ ...authForm, password: event.target.value })} required minLength={6} /></label><button className="button primary" disabled={Boolean(busy)}>{busy === "auth" ? "Signing in…" : "Sign in"}</button>{authStatus && <p className="admin-feedback" role="status">{authStatus}</p>}</form>}
+        </section> : <>
+          <div className="admin-title"><div><p className="eyebrow">Business overview</p><h1>Dashboard</h1><p className="muted">Manage your sand delivery business.</p></div><div className="admin-account"><span className="admin-online">Admin access active</span><small>{user.email}</small></div></div>
+          <div className="admin-stats">{[{label:"Loaded enquiries",value:queries.length},{label:"New enquiries",value:queries.filter((query)=>query.status==="new").length},{label:"Confirmed",value:queries.filter((query)=>query.status==="confirmed").length},{label:"Vehicles in editor",value:pricing.vehicles.length}].map((stat)=><article key={stat.label}><span>{stat.label}</span><strong>{loadingQueries ? "—" : stat.value}</strong></article>)}</div>
+          <nav className="admin-tabs" aria-label="Dashboard sections">{["enquiries","pricing","settings"].map((tab)=><button key={tab} aria-current={activeTab===tab ? "page" : undefined} className={activeTab===tab ? "active" : ""} onClick={()=>setActiveTab(tab)}>{tab === "enquiries" ? "Customer enquiries" : tab === "pricing" ? "Vehicle pricing" : "Website settings"}</button>)}</nav>
+          {activeTab === "enquiries" && <section className="admin-panel" aria-labelledby="enquiries-title"><div className="admin-panel-heading"><div><h2 id="enquiries-title">Customer enquiries</h2><p className="muted">Latest 200 enquiries · newest first</p></div><button className="button secondary" disabled={loadingQueries} onClick={loadQueries}>{loadingQueries ? "Refreshing…" : "↻ Refresh"}</button></div><div className="admin-filters"><label>Search enquiries<input type="search" placeholder="Name, phone, address or reference" value={search} onChange={(event)=>setSearch(event.target.value)} /></label><label>Status<select value={statusFilter} onChange={(event)=>setStatusFilter(event.target.value)}><option value="all">All statuses</option>{statuses.map((status)=><option key={status} value={status}>{status.charAt(0).toUpperCase()+status.slice(1)}</option>)}</select></label><span className="muted">{filteredQueries.length} results</span></div>{queryStatus && <p role="status" className="admin-feedback">{queryStatus}</p>}
+          {loadingQueries ? <div className="admin-empty" role="status">Loading enquiries…</div> : !filteredQueries.length ? <div className="admin-empty"><h3>{queries.length ? "No matching enquiries" : "No enquiries yet"}</h3><p>{queries.length ? "Try another search or status filter." : "Customer quote requests will appear here."}</p>{queries.length > 0 && <button className="button secondary" onClick={()=>{setSearch("");setStatusFilter("all");}}>Clear filters</button>}</div> : <div className="admin-table-scroll" role="region" aria-label="Customer enquiries table" tabIndex={0}><table className="admin-enquiry-table"><caption className="sr-only">Customer enquiries, newest first</caption><thead><tr><th scope="col">Customer</th><th scope="col">Delivery address</th><th scope="col">Requirement</th><th scope="col">Estimate</th><th scope="col">Delivery</th><th scope="col">Received</th><th scope="col">Status</th></tr></thead><tbody>{filteredQueries.map((query)=><tr key={query.id}><td><strong>{query.name}</strong><a href={`tel:+${normalizePhoneNumber(query.phone)}`}>{query.phone}</a><details className="enquiry-extra"><summary>Reference & notes</summary><small>{query.id}</small><p>{query.notes || "No notes provided."}</p></details></td><td className="table-address">{query.address}</td><td><strong>{query.sand_type}</strong><span>{query.unit_label || query.unit}</span><small>{query.quantity} {Number(query.quantity) === 1 ? "load" : "loads"}</small></td><td className="table-price">{currency(query.total)}</td><td>{query.delivery}{query.schedule_date && <small>{query.schedule_date}<br/>{query.schedule_time || ""}</small>}</td><td><span>{new Date(query.created_at).toLocaleDateString("en-IN", {timeZone:"Asia/Kolkata"})}</span><small>{new Date(query.created_at).toLocaleTimeString("en-IN", {timeZone:"Asia/Kolkata",hour:"2-digit",minute:"2-digit"})} IST</small></td><td><label className="sr-only" htmlFor={`status-${query.id}`}>Status for {query.name}</label><select id={`status-${query.id}`} className={`table-status status-${query.status}`} disabled={Boolean(busy)} value={query.status || "new"} onChange={(event)=>runAction("status",()=>updateQueryStatus(query.id,event.target.value))}>{statuses.map((status)=><option key={status} value={status}>{status.charAt(0).toUpperCase()+status.slice(1)}</option>)}</select></td></tr>)}</tbody></table></div>}</section>}
+          {activeTab === "pricing" && <section className="admin-panel"><div className="admin-panel-heading"><div><h2>Vehicle pricing</h2><p className="muted">Set the price per load for each vehicle. Future dates take effect on that date.</p></div></div><form className="admin-edit-form" onSubmit={(event)=>runAction("pricing",savePricing,event)}><label className="admin-date">Effective date<input type="date" required value={pricing.priceDate} onChange={(event)=>setPricing({...pricing,priceDate:event.target.value})}/></label><div className="admin-vehicle-editor">{pricing.vehicles.map((vehicle,index)=><article key={vehicle.id} className="admin-vehicle-row"><span className="vehicle-number">{String(index+1).padStart(2,"0")}</span><label>Vehicle name<input required maxLength={100} value={vehicle.name} onChange={(event)=>updateVehicle(vehicle.id,"name",event.target.value)} /></label><label>Wheels<input type="number" min={0} step={1} required value={vehicle.wheels} onChange={(event)=>updateVehicle(vehicle.id,"wheels",event.target.value)} /></label><label>Price per load (₹)<input type="number" min={1} step="any" required value={vehicle.price} onChange={(event)=>updateVehicle(vehicle.id,"price",event.target.value)} /></label><button className="admin-remove" type="button" disabled={pricing.vehicles.length===1 || Boolean(busy)} aria-label={`Remove ${vehicle.name}`} onClick={()=>removeVehicle(vehicle.id)}>Remove</button></article>)}</div><div className="admin-save-bar"><button className="button secondary" type="button" disabled={Boolean(busy)} onClick={addVehicle}>+ Add vehicle</button><button className="button primary" disabled={Boolean(busy)}>{busy === "pricing" ? "Saving…" : "Save prices"}</button></div>{pricingStatus && <p className="admin-feedback" role="status">{pricingStatus}</p>}</form></section>}
+          {activeTab === "settings" && <section className="admin-panel"><div className="admin-panel-heading"><div><h2>Website settings</h2><p className="muted">Manage public contact details and the same-day delivery surcharge.</p></div></div><div className="admin-settings-grid"><form className="admin-edit-form" onSubmit={(event)=>runAction("settings",saveSettings,event)}><label>Phone & WhatsApp<input type="tel" autoComplete="tel" required value={settings.contactPhone} onChange={(event)=>setSettings({...settings,contactPhone:event.target.value})} /><small className="muted">Include the country code, e.g. 91 followed by your mobile number.</small></label><label>Contact email<input type="email" autoComplete="email" required value={settings.contactEmail} onChange={(event)=>setSettings({...settings,contactEmail:event.target.value})} /></label><label>Same-day surcharge (₹)<input type="number" inputMode="numeric" min={0} max={100000} step={1} required value={settings.sameDaySurcharge} onChange={(event)=>setSettings({...settings,sameDaySurcharge:event.target.value})} /><small className="muted">Added once per enquiry for same-day delivery. Set 0 to waive it.</small></label><button className="button primary" disabled={Boolean(busy)}>{busy === "settings" ? "Saving…" : "Save settings"}</button>{settingsStatus && <p className="admin-feedback" role="status">{settingsStatus}</p>}</form><aside className="admin-contact-preview"><p className="eyebrow">Public contact preview</p><h3>Talk to Digit Infra Pvt LTD.</h3><p>{formatPhoneNumber(settings.contactPhone)}</p><p>{settings.contactEmail}</p><p>Same-day surcharge: {currency(settings.sameDaySurcharge)}</p><small className="muted">Preview of your current edits. Save to update the website.</small></aside></div></section>}
+        </>}
+      </main><footer className="admin-footer">Digit Infra Pvt LTD · Sand At Your Door</footer>
+    </div>
   );
 }

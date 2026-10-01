@@ -90,3 +90,15 @@ Set the same environment variables in Vercel. Build command:
 ```sh
 npm run build
 ```
+
+## Security migration for existing databases
+
+Run `supabase/migrations/20261001_protect_admin_privileges.sql` in the Supabase SQL editor before launch. This prevents authenticated users from inserting profiles with admin privileges or updating `is_admin`. New profiles still come from the auth trigger and server bootstrap. Verify that a non-admin cannot update `is_admin` through the Data API, and that approved admins can still edit prices.
+
+Enquiry prices are calculated server-side using the latest effective pricing in India time. Saved enquiries return a reference; customers explicitly click WhatsApp to send the saved details. Failed saves preserve their input. Rate limiting, bot protection and database-backed idempotency remain required before a public launch.
+
+Admins can edit the same-day surcharge under Website settings. It is stored as `site_settings.same_day_surcharge` and applied once per same-day enquiry. Existing databases need no schema change: saving settings creates the key. Missing configuration defaults to ₹500; zero disables the surcharge. Refresh the public page after changing settings.
+
+## Funnel analytics
+
+Mixpanel setup, production environment variables, event definitions and report instructions are in [docs/mixpanel-setup.md](docs/mixpanel-setup.md). Run `node --test tests/quoteAnalytics.test.mjs` to verify milestone ordering and privacy filtering. Development uses `.next-dev`; production builds use `.next` so they do not overwrite each other.

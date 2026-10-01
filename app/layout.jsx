@@ -1,5 +1,6 @@
 import "./globals.css";
 import ClarityScript from "./ClarityScript";
+import VercelAnalytics from "./VercelAnalytics";
 
 export const metadata = {
   title: "Sand At Your Door | Digit Infra Pvt LTD",
@@ -13,6 +14,7 @@ export default function RootLayout({ children }) {
       <body>
         {children}
         <ClarityScript />
+        <VercelAnalytics />
       </body>
     </html>
   );
