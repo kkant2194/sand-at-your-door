@@ -46,6 +46,8 @@ const copy = {
     rates: "Vehicle rates",
     eyebrow: "Same day sand delivery in Patna",
     title: "Sand delivered to your site in Patna.",
+    savingsTitle: "Guaranteed savings. Lower than market price.",
+    savingsNote: "Compare equivalent sand quality and quantity delivered to the same address. Share your local quote with our team to confirm your savings and final delivered price.",
     lead:
       "Order construction sand without hidden charges. Get clear pricing, scheduled delivery, and a fast callback from the Digit Infra team.",
     estimateCta: "Get a quote",
@@ -87,6 +89,8 @@ const copy = {
     rates: "वाहनों के रेट",
     eyebrow: "पटना में उसी दिन बालू डिलीवरी",
     title: "पटना में आपकी साइट तक बालू डिलीवरी।",
+    savingsTitle: "बचत की गारंटी। बाजार से कम कीमत।",
+    savingsNote: "एक ही पते पर डिलीवरी के लिए समान गुणवत्ता और मात्रा वाले बालू की कीमत से तुलना करें। बचत और अंतिम डिलीवरी कीमत की पुष्टि के लिए अपना स्थानीय भाव हमारी टीम को भेजें।",
     lead: "बिना छिपे शुल्क के बालू ऑर्डर करें। साफ रेट, तय समय पर डिलीवरी और Digit Infra टीम से तेज कॉलबैक।",
     estimateCta: "भाव मांगें",
     whatsappCta: "व्हाट्सऐप करें",
@@ -443,6 +447,10 @@ export default function Home() {
             <p className="eyebrow">{t.eyebrow}</p>
             <h1>{t.title}</h1>
             <p>{t.lead}</p>
+            <div className="hero-savings">
+              <strong>{t.savingsTitle}</strong>
+              <p>{t.savingsNote}</p>
+            </div>
             <div className="hero-actions">
               <a className="button primary" href="#calculator">
                 {t.estimateCta}
