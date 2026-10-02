@@ -29,7 +29,7 @@ const emptyQuote = {
   name: "",
   phone: "",
   address: "",
-  sandType: "Plaster",
+  sandType: "",
   quantity: 1,
   vehicleId: "tractor",
   delivery: "Same day",
@@ -40,10 +40,13 @@ const emptyQuote = {
 const copy = {
   en: {
     requirement: "Your requirement", deliveryDetails: "Delivery details", contactDetails: "Contact details", loads: "Number of loads", capacity: "Load capacity: confirm with our team", choose: "Select application", selected: "Selected", estimate: "Your estimate", subtotal: "Load subtotal", surcharge: "Same-day surcharge", estimatedTotal: "Estimated total", priceNote: "Final price depends on delivery location, site access and unloading. Capacity and delivery availability will be confirmed by our team.", updated: "Last updated", examples: "Example rates · Contact us to confirm", sameDay: "Same day", tomorrow: "Tomorrow", scheduled: "Choose a date", optional: "optional", call: "Call", email: "Email", sendDetails: "Send details on WhatsApp", savedTitle: "Your enquiry is saved", reference: "Enquiry reference", nextSteps: "Our team will contact you to confirm pricing and delivery. You can also send these details on WhatsApp.", errorName: "Enter your name.", errorPhone: "Enter a valid Indian mobile number.", errorAddress: "Enter your delivery address.", errorQuantity: "Choose between 1 and 100 whole loads.", errorDate: "Choose today or a future date.", errorTime: "Choose a delivery time.", errorVehicle: "Select a vehicle.", saveError: "We couldn’t save your enquiry. Your details are still here. Please retry or contact us on WhatsApp.", namePlaceholder: "Your full name", phonePlaceholder: "10-digit mobile number", addressPlaceholder: "Site address, locality, PIN code and nearby landmark", notesPlaceholder: "Site access, unloading needs or sand specifications", coverage: "Delivery in Patna", coverageText: "Share your site location so our team can confirm delivery coverage and access.", business: "Digit Infra Pvt LTD", businessText: "Patna, Bihar · 800020", availability: "Confirm delivery availability", availabilityText: "Call or WhatsApp for operating hours and available delivery slots.", illustration: "Illustrative construction images", back: "Back to top", perLoad: "per load", saving: "Sending…", startAgain: "Request another quote",
+    errorApplication: "Select a sand application.",
     products: "Applications",
     quote: "Quote",
     contact: "Contact",
     rates: "Vehicle rates",
+    ratesLoading: "Loading vehicle rates…",
+    ratesUnavailable: "Vehicle rates unavailable · Contact us for a quote",
     eyebrow: "Same day sand delivery in Patna",
     title: "Sand delivered to your site in Patna.",
     savingsTitle: "Guaranteed savings. Lower than market price.",
@@ -53,7 +56,7 @@ const copy = {
     estimateCta: "Get a quote",
     whatsappCta: "WhatsApp now",
     productsEyebrow: "Sand for every project",
-    productsTitle: "Tell us what you’re building.",
+    productsTitle: "Tell us why you need sand.",
     plaster: "Plaster",
     plasterText: "Sand requirements for walls and ceilings.",
     rcc: "RCC (General)",
@@ -83,10 +86,13 @@ const copy = {
   },
   hi: {
     requirement: "आपकी जरूरत", deliveryDetails: "डिलीवरी की जानकारी", contactDetails: "संपर्क की जानकारी", loads: "लोड की संख्या", capacity: "लोड क्षमता: टीम से पुष्टि करें", choose: "उपयोग चुनें", selected: "चुना गया", estimate: "आपका अनुमान", subtotal: "लोड की कीमत", surcharge: "उसी दिन डिलीवरी शुल्क", estimatedTotal: "अनुमानित कुल", priceNote: "अंतिम रेट लोकेशन, साइट के रास्ते और अनलोडिंग पर निर्भर है। हमारी टीम क्षमता और डिलीवरी की उपलब्धता की पुष्टि करेगी।", updated: "अंतिम अपडेट", examples: "उदाहरण रेट · पुष्टि के लिए संपर्क करें", sameDay: "उसी दिन", tomorrow: "कल", scheduled: "तारीख चुनें", optional: "वैकल्पिक", call: "कॉल करें", email: "ईमेल", sendDetails: "जानकारी व्हाट्सऐप पर भेजें", savedTitle: "आपका अनुरोध सेव हो गया", reference: "अनुरोध संदर्भ", nextSteps: "हमारी टीम रेट और डिलीवरी की पुष्टि के लिए संपर्क करेगी। आप यह जानकारी व्हाट्सऐप पर भी भेज सकते हैं।", errorName: "अपना नाम लिखें।", errorPhone: "सही भारतीय मोबाइल नंबर लिखें।", errorAddress: "डिलीवरी का पता लिखें।", errorQuantity: "1 से 100 तक पूरे लोड चुनें।", errorDate: "आज या आगे की तारीख चुनें।", errorTime: "डिलीवरी का समय चुनें।", errorVehicle: "वाहन चुनें।", saveError: "अनुरोध सेव नहीं हुआ। आपकी जानकारी सुरक्षित है। फिर कोशिश करें या व्हाट्सऐप पर संपर्क करें।", namePlaceholder: "आपका पूरा नाम", phonePlaceholder: "10 अंकों का मोबाइल नंबर", addressPlaceholder: "साइट का पता, इलाका, पिन कोड और पास की पहचान", notesPlaceholder: "साइट का रास्ता, अनलोडिंग या बालू की आवश्यकताएं", coverage: "पटना में डिलीवरी", coverageText: "डिलीवरी क्षेत्र और रास्ते की पुष्टि के लिए साइट की लोकेशन बताएं।", business: "Digit Infra Pvt LTD", businessText: "पटना, बिहार · 800020", availability: "डिलीवरी की उपलब्धता पूछें", availabilityText: "काम के समय और डिलीवरी स्लॉट के लिए कॉल या व्हाट्सऐप करें।", illustration: "निर्माण के उदाहरणात्मक चित्र", back: "ऊपर जाएं", perLoad: "प्रति लोड", saving: "भेजा जा रहा है…", startAgain: "नया अनुरोध भेजें",
+    errorApplication: "बालू का उपयोग चुनें।",
     products: "उपयोग",
     quote: "भाव",
     contact: "संपर्क",
     rates: "वाहनों के रेट",
+    ratesLoading: "वाहनों के रेट लोड हो रहे हैं…",
+    ratesUnavailable: "वाहनों के रेट उपलब्ध नहीं हैं · भाव के लिए संपर्क करें",
     eyebrow: "पटना में उसी दिन बालू डिलीवरी",
     title: "पटना में आपकी साइट तक बालू डिलीवरी।",
     savingsTitle: "बचत की गारंटी। बाजार से कम कीमत।",
@@ -95,7 +101,7 @@ const copy = {
     estimateCta: "भाव मांगें",
     whatsappCta: "व्हाट्सऐप करें",
     productsEyebrow: "हर काम के लिए बालू",
-    productsTitle: "बताएं, बालू किस काम के लिए चाहिए।",
+    productsTitle: "बताएं, आपको बालू किस काम के लिए चाहिए।",
     plaster: "प्लास्टर",
     plasterText: "दीवार या छत के प्लास्टर का काम बताएं, ताकि बालू की जरूरत की पुष्टि की जा सके।",
     rcc: "आरसीसी (सामान्य)",
@@ -193,6 +199,7 @@ export default function Home() {
   const [language, setLanguage] = useState("en");
   const [quote, setQuote] = useState(emptyQuote);
   const [pricing, setPricing] = useState(defaultPricing);
+  const [pricingStatus, setPricingStatus] = useState("loading");
   const [sameDaySurcharge, setSameDaySurcharge] = useState(DEFAULT_SAME_DAY_SURCHARGE);
   const [contactPhone, setContactPhone] = useState(fallbackPhoneNumber);
   const [contactEmail, setContactEmail] = useState(fallbackEmail);
@@ -271,6 +278,7 @@ export default function Home() {
   }
   function validate(action = "quote") {
     const next = {};
+    if (!applications.some(({ value }) => value === quote.sandType)) next.sandType = t.errorApplication;
     if (!quote.name.trim()) next.name = t.errorName;
     if (!/^(?:\+?91|0)?[6-9]\d{9}$/.test(quote.phone.replace(/[ ()-]/g, ""))) next.phone = t.errorPhone;
     if (!quote.address.trim()) next.address = t.errorAddress;
@@ -292,23 +300,33 @@ export default function Home() {
 
   useEffect(() => {
     async function loadPageData() {
-      if (!isSupabaseConfigured) return;
+      if (!isSupabaseConfigured) {
+        setPricingStatus("unavailable");
+        return;
+      }
 
-      const [pricingResult, phoneResult] = await Promise.all([
+      const [pricingResponse, phoneResponse] = await Promise.allSettled([
         supabase.from("pricing").select("*").lte("price_date", new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date())).order("price_date", { ascending: false }).limit(1).maybeSingle(),
         supabase.from("site_settings").select("key, value").in("key", ["contact_phone", "contact_email", "same_day_surcharge"]),
       ]);
 
-      if (!pricingResult.error && pricingResult.data) {
+      const pricingResult = pricingResponse.status === "fulfilled" ? pricingResponse.value : null;
+      const phoneResult = phoneResponse.status === "fulfilled" ? phoneResponse.value : null;
+      if (pricingResult && !pricingResult.error && pricingResult.data) {
         const nextPricing = normalizePricing(pricingResult.data);
-        setPricing(nextPricing);
+        const validRates = nextPricing.priceDate && nextPricing.vehicles.length > 0
+          && nextPricing.vehicles.every((vehicle) => Number.isFinite(vehicle.price) && vehicle.price > 0);
+        setPricingStatus(validRates ? "ready" : "unavailable");
+        if (validRates) setPricing(nextPricing);
         setQuote((current) => ({
           ...current,
           vehicleId: nextPricing.vehicles[0]?.id || current.vehicleId,
         }));
       }
 
-      if (!phoneResult.error && Array.isArray(phoneResult.data)) {
+      if (!pricingResult || pricingResult.error || !pricingResult.data) setPricingStatus("unavailable");
+
+      if (phoneResult && !phoneResult.error && Array.isArray(phoneResult.data)) {
         const settings = Object.fromEntries(phoneResult.data.map((row) => [row.key, row.value]));
         setSameDaySurcharge(getSameDaySurcharge(settings.same_day_surcharge));
         if (settings.contact_phone) setContactPhone(normalizePhoneNumber(settings.contact_phone));
@@ -436,9 +454,9 @@ export default function Home() {
         </a>
       </header>
 
-      <section className="ticker" aria-label={t.rates}>
-        <div className="ticker-badge"><span className="rates-indicator" aria-hidden="true" /><strong>{pricing.priceDate ? `${pricing.priceDate === today ? (language === "hi" ? "आज के रेट" : "Today rates") : t.rates} · ${pricing.priceDate}` : t.examples}</strong></div>
-        <div className="ticker-track">{[0, 1].map((repeat) => <span key={repeat} aria-hidden={repeat === 1 ? true : undefined}>{pricing.vehicles.map((vehicle) => <em key={vehicle.id}>{displayVehicle(vehicle)} <b>{currency(vehicle.price)}</b></em>)}</span>)}</div>
+      <section className="ticker" aria-label={t.rates} aria-busy={pricingStatus === "loading"}>
+        <div className="ticker-badge">{pricingStatus === "ready" && <span className="rates-indicator" aria-hidden="true" />}<strong role="status">{pricingStatus === "loading" ? t.ratesLoading : pricingStatus === "unavailable" ? t.ratesUnavailable : pricing.priceDate ? `${pricing.priceDate === today ? (language === "hi" ? "आज के रेट" : "Today rates") : t.rates} · ${pricing.priceDate}` : t.examples}</strong></div>
+        {pricingStatus === "ready" && <div className="ticker-track">{[0, 1].map((repeat) => <span key={repeat} aria-hidden={repeat === 1 ? true : undefined}>{pricing.vehicles.map((vehicle) => <em key={vehicle.id}>{displayVehicle(vehicle)} <b>{currency(vehicle.price)}</b></em>)}</span>)}</div>}
       </section>
       <main id="home">
         <section className="hero">
@@ -488,7 +506,7 @@ export default function Home() {
             <button className="button secondary" onClick={newJourney}>{t.startAgain}</button>
           </section> : <form className="quote-form" onSubmit={saveQuote} noValidate data-clarity-mask="true">
             <fieldset><legend><span>01</span>{t.requirement}</legend>
-              <div className="field-pair"><label>{t.sandType}<select value={quote.sandType} onChange={(event) => updateQuote("sandType", event.target.value)}>{applications.map(({ value, key }) => <option key={key} value={value}>{t[key]}</option>)}</select></label>
+              <div className="field-pair"><label>{t.sandType}<select {...fieldProps("sandType")} value={quote.sandType} onChange={(event) => updateQuote("sandType", event.target.value)} required><option value="" disabled>{t.choose}</option>{applications.map(({ value, key }) => <option key={key} value={value}>{t[key]}</option>)}</select>{fieldError("sandType")}</label>
               <div className="quantity-field">
                 <label htmlFor="quote-quantity">{t.loads}</label>
                 <div className="quantity-stepper">

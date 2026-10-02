@@ -42,3 +42,8 @@ test('new quote has independent milestone state and identifier', () => {
   }
   assert.equal(events.length, 6); assert.notEqual(events[0][1], events[3][1]);
 });
+
+test('application must be chosen before requirement milestone and remains visible in validation diagnostics', () => {
+  assert.equal(validQuoteSections({ ...quote, sandType: '' }, ['tractor'], '2026-10-01').requirement, false);
+  assert.deepEqual(sanitizeQuoteProperties({ invalid_fields: ['sandType'] }), { invalid_fields: ['sandType'] });
+});
