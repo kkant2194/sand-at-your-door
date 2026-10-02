@@ -64,7 +64,7 @@ Break down by language, device_type, application or vehicle_type. Create separat
 
 ## Privacy and limits
 
-Only explicitly allowed custom events/properties are sent. Autocapture, automatic page views and Mixpanel session replay are off. Anonymous SDK identification is used; no identify()/People profiles are created. URL/referrer properties and IP-based geolocation enrichment are disabled. Anonymous localStorage IDs persist within the browser; this is pseudonymous tracking, not zero-data tracking. Browser/device metadata may still be sent by the SDK. Respect existing opt-out/DNT behavior and describe analytics in your privacy notice. Existing Clarity recording is separate; the form and confirmation are masked.
+Only explicitly allowed custom events/properties are sent. Autocapture, automatic page views and Mixpanel session replay are off. Anonymous SDK identification is used; no identify()/People profiles are created. URL/referrer properties are disabled. IP-based geolocation enrichment is enabled for approximate country and city on new events; VPNs and mobile networks can affect accuracy. Anonymous localStorage IDs persist within the browser; this is pseudonymous tracking, not zero-data tracking. Browser/device metadata may still be sent by the SDK. Respect existing opt-out/DNT behavior and describe analytics in your privacy notice. Existing Clarity recording is separate; the form and confirmation are masked.
 
 Client-side lead_saved can be missed by blockers, navigation or network failure even when the database save succeeds. Use Supabase as the source of truth for lead totals. Tracking errors never block quote submission. No Mixpanel project/reports are created automatically by this code.
 
