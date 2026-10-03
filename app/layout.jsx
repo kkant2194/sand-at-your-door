@@ -1,5 +1,4 @@
 import "./globals.css";
-import ClarityScript from "./ClarityScript";
 import VercelAnalytics from "./VercelAnalytics";
 
 export const metadata = {
@@ -13,7 +12,6 @@ export default function RootLayout({ children }) {
     <html lang="en-IN">
       <body>
         {children}
-        <ClarityScript />
         <VercelAnalytics />
       </body>
     </html>

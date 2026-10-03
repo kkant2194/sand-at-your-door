@@ -23,10 +23,15 @@ For local testing, add the same variables to `.env.local`, preferably using a te
 
 | Event | Definition |
 | --- | --- |
+| page_viewed | Public homepage loaded, once per mount; excludes admin. |
+| phone_clicked | Phone link clicked; phone_location is header, mobile_bar or contact_section. Does not confirm a connected call. |
+| quote_field_started | Required field focused or edited, once per field per attempt; field_name only, never values. |
+| quote_field_completed | Name, phone or address first becomes valid, once per field per attempt. |
+| quote_details_completed | All three required fields are valid, regardless of application/vehicle selection. |
 | quote_viewed | Quote section intersects the viewport, once per attempt. |
 | quote_started | First field change, application-card selection or submit action. If an application card is selected before the quote is visible, emission waits for visibility so the main funnel remains ordered. |
-| requirement_completed | Application, vehicle and 1–100 integer quantity are valid after the journey starts. Defaults can satisfy this milestone after interaction; it measures section readiness, not separate clicks on every field. |
-| delivery_completed | Address and delivery choice are valid; scheduled delivery includes a valid non-past date. |
+| requirement_completed | Application, vehicle and 1–100 integer quantity are valid after the journey starts. Application and vehicle are optional. This milestone measures supplied optional details and must not be used as a required conversion step. |
+| delivery_completed | Address and delivery choice are valid; a scheduled date, when supplied, must be valid and non-past. The date is optional. |
 | contact_completed | Name and Indian mobile number are valid. |
 | quote_submit_attempted | Request a quote is submitted, before validation; repeats on retries. |
 | quote_validation_failed | Quote submission is blocked; invalid_fields contains field names only. |
@@ -64,8 +69,16 @@ Break down by language, device_type, application or vehicle_type. Create separat
 
 ## Privacy and limits
 
-Only explicitly allowed custom events/properties are sent. Autocapture, automatic page views and Mixpanel session replay are off. Anonymous SDK identification is used; no identify()/People profiles are created. URL/referrer properties are disabled. IP-based geolocation enrichment is enabled for approximate country and city on new events; VPNs and mobile networks can affect accuracy. Anonymous localStorage IDs persist within the browser; this is pseudonymous tracking, not zero-data tracking. Browser/device metadata may still be sent by the SDK. Respect existing opt-out/DNT behavior and describe analytics in your privacy notice. Existing Clarity recording is separate; the form and confirmation are masked.
+Only explicitly allowed custom events/properties are sent. General autocapture is off. Mixpanel Session Replay records 100% of eligible sessions with heatmap collection enabled. Heatmap collection may emit SDK click/page context events in addition to the custom events. Inputs are masked, the saved confirmation is blocked, and console/network recording is disabled. Anonymous SDK identification is used; no identify()/People profiles are created. URL/referrer properties are disabled. IP-based geolocation enrichment is enabled for approximate country and city on new events; VPNs and mobile networks can affect accuracy. Anonymous localStorage IDs persist within the browser; this is pseudonymous tracking, not zero-data tracking. Browser/device metadata may still be sent by the SDK. Respect existing opt-out/DNT behavior and describe analytics in your privacy notice. Clarity is no longer loaded by the app layout; visual behavior analysis uses Mixpanel.
 
 Client-side lead_saved can be missed by blockers, navigation or network failure even when the database save succeeds. Use Supabase as the source of truth for lead totals. Tracking errors never block quote submission. No Mixpanel project/reports are created automatically by this code.
 
 References: https://docs.mixpanel.com/docs/tracking-methods/sdks/javascript and https://docs.mixpanel.com/docs/reports/funnels
+
+## Drop-off reports and visual behavior
+
+Measure page_viewed → quote_viewed at visitor level (page events do not have an attempt ID). For quote-attempt conversion, hold quote_attempt_id constant across quote_viewed → quote_started → quote_submit_attempted → lead_saved. Use quote_started → quote_details_completed to measure required-field readiness. Required fields can be filled in any order: compare started/completed by field_name instead of forcing a name → phone → address sequence. Completion milestones are historical, and clearing a field does not retract them.
+
+Use Insights for phone_clicked by phone_location and whatsapp_clicked by whatsapp_location. Neither confirms an actual call or message. Counts can include repeat clicks; distinguish total events from unique users.
+
+Mixpanel heatmaps, scrollmaps, and replays now use record_sessions_percent: 100 and record_heatmap_data: true. Open Mixpanel Home → Heatmaps and select the production homepage URL after deployment and new recorded traffic. Use Goal Mode with lead_saved. Check your project Session Replay access and allowance; recorded coverage depends on SDK opt-out behavior, blockers, and project limits. Inputs are masked; saved confirmation content is blocked; admin initialization is disabled. Clarity is no longer loaded. No earlier sessions are backfilled.

@@ -19,7 +19,7 @@ test('milestones deduplicate, while attempts and failures repeat for retries', (
   journey.stages(quote, ['tractor'], '2026-10-01', {}); journey.stages(quote, ['tractor'], '2026-10-01', {});
   journey.event('quote_submit_attempted', {}); journey.event('quote_save_failed', {}); journey.event('quote_submit_attempted', {});
   journey.saved({}); journey.saved({}); journey.stages(quote, ['tractor'], '2026-10-01', {});
-  assert.deepEqual(events, ['quote_viewed', 'quote_started', 'requirement_completed', 'delivery_completed', 'contact_completed', 'quote_submit_attempted', 'quote_save_failed', 'quote_submit_attempted', 'lead_saved']);
+  assert.deepEqual(events, ['quote_viewed', 'quote_started', 'quote_field_completed', 'quote_field_completed', 'quote_field_completed', 'quote_details_completed', 'requirement_completed', 'delivery_completed', 'contact_completed', 'quote_submit_attempted', 'quote_save_failed', 'quote_submit_attempted', 'lead_saved']);
 });
 test('application-card start waits for visible quote form and preserves funnel order', () => {
   const events = [];
@@ -27,7 +27,7 @@ test('application-card start waits for visible quote form and preserves funnel o
   journey.start({}, 'application_card'); journey.stages(quote, ['tractor'], '2026-10-01', {});
   assert.equal(events.length, 0);
   journey.viewed({});
-  assert.deepEqual(events.map(([event]) => event), ['quote_viewed', 'quote_started', 'requirement_completed', 'delivery_completed', 'contact_completed']);
+  assert.deepEqual(events.map(([event]) => event), ['quote_viewed', 'quote_started', 'quote_field_completed', 'quote_field_completed', 'quote_field_completed', 'quote_details_completed', 'requirement_completed', 'delivery_completed', 'contact_completed']);
   assert(events.every(([, entry]) => entry === 'application_card'));
 });
 test('sections can complete in any order; scheduled date must be valid', () => {
@@ -46,4 +46,19 @@ test('new quote has independent milestone state and identifier', () => {
 test('application must be chosen before requirement milestone and remains visible in validation diagnostics', () => {
   assert.equal(validQuoteSections({ ...quote, sandType: '' }, ['tractor'], '2026-10-01').requirement, false);
   assert.deepEqual(sanitizeQuoteProperties({ invalid_fields: ['sandType'] }), { invalid_fields: ['sandType'] });
+});
+
+test('contact-only readiness and field interaction deduplicate without requiring optional details', () => {
+  const events = [];
+  const j = createQuoteJourney((event, props) => events.push([event, props]), id);
+  j.viewed({}); j.start({});
+  j.fieldStarted('phone', {}); j.fieldStarted('phone', {});
+  const minimal = { ...quote, sandType: '', vehicleId: '', delivery: 'Scheduled', scheduleDate: '' };
+  j.stages(minimal, ['tractor'], '2026-10-03', {}); j.stages(minimal, ['tractor'], '2026-10-03', {});
+  assert.equal(events.filter(([e]) => e === 'quote_field_started').length, 1);
+  assert.equal(events.filter(([e]) => e === 'quote_field_completed').length, 3);
+  assert.equal(events.filter(([e]) => e === 'quote_details_completed').length, 1);
+  assert(!events.some(([e]) => e === 'requirement_completed'));
+  assert(events.some(([e]) => e === 'delivery_completed'));
+  assert.deepEqual(sanitizeQuoteProperties({ field_name: 'phone', phone_location: 'header', phone: quote.phone }), { phone_location: 'header', field_name: 'phone' });
 });

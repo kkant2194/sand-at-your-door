@@ -31,7 +31,7 @@ const emptyQuote = {
   address: "",
   sandType: "",
   quantity: 1,
-  vehicleId: "tractor",
+  vehicleId: "",
   delivery: "Same day",
   scheduleDate: "",
   notes: "",
@@ -45,6 +45,7 @@ const copy = {
     quote: "Quote",
     contact: "Contact",
     rates: "Vehicle rates",
+    pricePending: "Our team will confirm your vehicle and price.",
     ratesLoading: "Loading vehicle rates…",
     ratesUnavailable: "Vehicle rates unavailable · Contact us for a quote",
     eyebrow: "Same day sand delivery in Patna",
@@ -91,6 +92,7 @@ const copy = {
     quote: "भाव",
     contact: "संपर्क",
     rates: "वाहनों के रेट",
+    pricePending: "हमारी टीम वाहन और कीमत की पुष्टि करेगी।",
     ratesLoading: "वाहनों के रेट लोड हो रहे हैं…",
     ratesUnavailable: "वाहनों के रेट उपलब्ध नहीं हैं · भाव के लिए संपर्क करें",
     eyebrow: "पटना में उसी दिन बालू डिलीवरी",
@@ -210,14 +212,15 @@ export default function Home() {
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const journeyRef = useRef(null);
   const formVisible = useRef(false);
+  const pageTracked = useRef(false);
   const analyticsContext = useRef({});
   const t = copy[language];
   const phoneNumber = normalizePhoneNumber(contactPhone);
   const displayPhone = formatPhoneNumber(phoneNumber);
 
-  const selectedVehicle = pricing.vehicles.find((vehicle) => vehicle.id === quote.vehicleId) || pricing.vehicles[0];
+  const selectedVehicle = pricing.vehicles.find((vehicle) => vehicle.id === quote.vehicleId);
   const selectedRate = Number(selectedVehicle?.price || 0);
-  const total = Math.round(selectedRate * Number(quote.quantity || 0) + (quote.delivery === "Same day" ? sameDaySurcharge : 0));
+  const total = selectedVehicle ? Math.round(selectedRate * Number(quote.quantity || 0) + (quote.delivery === "Same day" ? sameDaySurcharge : 0)) : null;
 
   const applications = [{ value: "Plaster", key: "plaster" }, { value: "RCC (General)", key: "rcc" }, { value: "Terrace Slab", key: "terrace" }, { value: "Raft Foundation", key: "raft" }];
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
@@ -244,6 +247,10 @@ export default function Home() {
   }
   useEffect(() => {
     void initAnalytics();
+    if (!pageTracked.current) {
+      pageTracked.current = true;
+      trackQuoteEvent("page_viewed", { language: analyticsContext.current.language });
+    }
     const section = document.getElementById("calculator");
     if (!section || !window.IntersectionObserver) return;
     const observer = new IntersectionObserver(([entry]) => {
@@ -278,13 +285,11 @@ export default function Home() {
   }
   function validate(action = "quote") {
     const next = {};
-    if (!applications.some(({ value }) => value === quote.sandType)) next.sandType = t.errorApplication;
     if (!quote.name.trim()) next.name = t.errorName;
     if (!/^(?:\+?91|0)?[6-9]\d{9}$/.test(quote.phone.replace(/[ ()-]/g, ""))) next.phone = t.errorPhone;
     if (!quote.address.trim()) next.address = t.errorAddress;
     if (!Number.isInteger(Number(quote.quantity)) || Number(quote.quantity) < 1 || Number(quote.quantity) > 100) next.quantity = t.errorQuantity;
-    if (!selectedVehicle) next.vehicleId = t.errorVehicle;
-    if (quote.delivery === "Scheduled") {
+    if (quote.delivery === "Scheduled" && quote.scheduleDate) {
       if (!quote.scheduleDate || quote.scheduleDate < today) next.scheduleDate = t.errorDate;
     }
     setErrors(next);
@@ -293,7 +298,7 @@ export default function Home() {
     return !Object.keys(next).length;
   }
   function fieldError(name) { return errors[name] ? <span className="field-error" id={`error-${name}`}>{errors[name]}</span> : null; }
-  function fieldProps(name) { return { id: `quote-${name}`, "aria-invalid": Boolean(errors[name]), "aria-describedby": errors[name] ? `error-${name}` : undefined }; }
+  function fieldProps(name) { return { onFocus: () => startJourney().fieldStarted(name, quoteProperties()), id: `quote-${name}`, "aria-invalid": Boolean(errors[name]), "aria-describedby": errors[name] ? `error-${name}` : undefined }; }
   useEffect(() => {
     document.documentElement.lang = language === "hi" ? "hi-IN" : "en-IN";
   }, [language]);
@@ -320,7 +325,7 @@ export default function Home() {
         if (validRates) setPricing(nextPricing);
         setQuote((current) => ({
           ...current,
-          vehicleId: nextPricing.vehicles[0]?.id || current.vehicleId,
+          vehicleId: current.vehicleId,
         }));
       }
 
@@ -339,7 +344,7 @@ export default function Home() {
 
   function updateQuote(field, value, source = "form") {
     if (journeyRef.current?.completed) newJourney();
-    startJourney(source, { ...quote, [field]: value });
+    startJourney(source, { ...quote, [field]: value }).fieldStarted(field, quoteProperties({ ...quote, [field]: value }));
     setSavedLead(null);
     setErrors((current) => ({ ...current, [field]: undefined }));
     setQuote((current) => ({
@@ -367,13 +372,13 @@ export default function Home() {
       `${t.customerName}: ${lead.name}`,
       `${t.mobile}: ${lead.phone}`,
       `${t.address}: ${lead.address}`,
-      `${t.sandType}: ${t[applications.find((item) => item.value === lead.sandType)?.key] || lead.sandType}`,
-      `${t.vehicle}: ${lead.vehicleName}`,
+      lead.sandType ? `${t.sandType}: ${t[applications.find((item) => item.value === lead.sandType)?.key] || lead.sandType}` : "",
+      lead.vehicleId ? `${t.vehicle}: ${lead.vehicleName}` : t.pricePending,
       `${t.loads}: ${lead.quantity}`,
       `${t.updated}: ${lead.priceDate || t.examples}`,
-      `${t.rates}: ${currency(lead.rate)}`,
+      lead.vehicleId ? `${t.rates}: ${currency(lead.rate)}` : "",
       lead.scheduleDate ? `${t.date}: ${lead.scheduleDate}` : "",
-      `${t.estimatedTotal}: ${currency(lead.total)}`,
+      lead.total != null ? `${t.estimatedTotal}: ${currency(lead.total)}` : "",
       lead.notes ? `${t.notes}: ${lead.notes}` : "",
     ]
       .filter(Boolean)
@@ -417,7 +422,7 @@ export default function Home() {
       setSavedLead({ ...lead, ...result });
       setQuoteStatus("");
       requestAnimationFrame(() => document.getElementById("quote-success")?.focus());
-      setQuote({ ...emptyQuote, vehicleId: pricing.vehicles[0]?.id || "" });
+      setQuote({ ...emptyQuote });
     } catch (error) {
       activeJourney.event("quote_save_failed", { ...quoteProperties(lead), failure_type: failureType });
       setQuoteStatus(t.saveError);
@@ -449,7 +454,7 @@ export default function Home() {
             हिंदी
           </button>
         </div>
-        <a className="header-call" href={`tel:+${phoneNumber}`}>
+        <a className="header-call" href={`tel:+${phoneNumber}`} onClick={() => trackQuoteEvent("phone_clicked", { language, phone_location: "header" })}>
           {displayPhone}
         </a>
       </header>
@@ -478,7 +483,7 @@ export default function Home() {
         </section>
 
         <div className={`mobile-cta ${keyboardOpen ? "keyboard-open" : ""}`} aria-label={t.contact}>
-          <a href={`tel:+${phoneNumber}`}>{t.call}</a>
+          <a href={`tel:+${phoneNumber}`} onClick={() => trackQuoteEvent("phone_clicked", { language, phone_location: "mobile_bar" })}>{t.call}</a>
           <a href={`https://wa.me/${phoneNumber}`} target="_blank" rel="noreferrer" onClick={() => trackQuoteEvent("whatsapp_clicked", { language, whatsapp_location: "mobile_bar" })}><WhatsAppIcon /> WhatsApp</a>
           <a href="#calculator">{t.estimateCta}</a>
         </div>
@@ -501,12 +506,12 @@ export default function Home() {
           <div>
           {savedLead ? <section className="success-panel" data-clarity-mask="true" id="quote-success" tabIndex={-1} aria-labelledby="success-title">
             <span className="success-check" aria-hidden="true">✓</span><h3 id="success-title">{t.savedTitle}</h3><p>{t.nextSteps}</p>
-            <small>{t.reference}</small><code>{savedLead.id}</code><p>{t.estimatedTotal}: <strong>{currency(savedLead.total)}</strong></p>
+            <small>{t.reference}</small><code>{savedLead.id}</code><p>{savedLead.priced ? <>{t.estimatedTotal}: <strong>{currency(savedLead.total)}</strong></> : t.pricePending}</p>
             <button className="button primary" onClick={() => openWhatsApp(savedLead, "saved_confirmation")}><WhatsAppIcon />{t.sendDetails}</button>
             <button className="button secondary" onClick={newJourney}>{t.startAgain}</button>
           </section> : <form className="quote-form" onSubmit={saveQuote} noValidate data-clarity-mask="true">
             <fieldset><legend><span>01</span>{t.requirement}</legend>
-              <div className="field-pair"><label>{t.sandType}<select {...fieldProps("sandType")} value={quote.sandType} onChange={(event) => updateQuote("sandType", event.target.value)} required><option value="" disabled>{t.choose}</option>{applications.map(({ value, key }) => <option key={key} value={value}>{t[key]}</option>)}</select>{fieldError("sandType")}</label>
+              <div className="field-pair"><label>{t.sandType} ({t.optional})<select {...fieldProps("sandType")} value={quote.sandType} onChange={(event) => updateQuote("sandType", event.target.value)}><option value="">{t.choose}</option>{applications.map(({ value, key }) => <option key={key} value={value}>{t[key]}</option>)}</select>{fieldError("sandType")}</label>
               <div className="quantity-field">
                 <label htmlFor="quote-quantity">{t.loads}</label>
                 <div className="quantity-stepper">
@@ -517,19 +522,19 @@ export default function Home() {
                 <small className="muted" id="quantity-help">{language === "hi" ? "लोड की संख्या लिखें या + / − दबाएं (1–100)।" : "Type a number or use + / − (1–100 loads)."}</small>
                 {fieldError("quantity")}
               </div></div>
-              <fieldset className="vehicle-fieldset"><legend>{t.vehicle}</legend><div className="vehicle-options">{pricing.vehicles.map((vehicle) => <label className={`vehicle-option ${quote.vehicleId === vehicle.id ? "selected" : ""}`} key={vehicle.id}><input type="radio" name="vehicle" value={vehicle.id} checked={quote.vehicleId === vehicle.id} onChange={() => updateQuote("vehicleId", vehicle.id)} /><span>{displayVehicle(vehicle)}<strong>{currency(vehicle.price)}</strong></span></label>)}</div><small className="muted">{t.capacity}</small>{fieldError("vehicleId")}</fieldset>
+              <fieldset className="vehicle-fieldset"><legend>{t.vehicle} ({t.optional})</legend><div className="vehicle-options">{pricing.vehicles.map((vehicle) => <label className={`vehicle-option ${quote.vehicleId === vehicle.id ? "selected" : ""}`} key={vehicle.id}><input type="radio" name="vehicle" value={vehicle.id} checked={quote.vehicleId === vehicle.id} onChange={() => updateQuote("vehicleId", vehicle.id)} /><span>{displayVehicle(vehicle)}<strong>{currency(vehicle.price)}</strong></span></label>)}</div><small className="muted">{t.capacity}</small>{fieldError("vehicleId")}</fieldset>
             </fieldset>
             <fieldset><legend><span>02</span>{t.deliveryDetails}</legend>
               <label>{t.address}<textarea {...fieldProps("address")} value={quote.address} onChange={(event) => updateQuote("address", event.target.value)} placeholder={t.addressPlaceholder} autoComplete="street-address" maxLength={1000} rows="3" required />{fieldError("address")}</label>
               <label>{t.timing}<select value={quote.delivery} onChange={(event) => updateQuote("delivery", event.target.value)}><option value="Same day">{t.sameDay}</option><option value="Tomorrow">{t.tomorrow}</option><option value="Scheduled">{t.scheduled}</option></select></label>
-              {quote.delivery === "Scheduled" && <div><label>{t.date}<input {...fieldProps("scheduleDate")} type="date" min={today} value={quote.scheduleDate} onChange={(event) => updateQuote("scheduleDate", event.target.value)} required />{fieldError("scheduleDate")}</label></div>}
+              {quote.delivery === "Scheduled" && <div><label>{t.date}<input {...fieldProps("scheduleDate")} type="date" min={today} value={quote.scheduleDate} onChange={(event) => updateQuote("scheduleDate", event.target.value)} />{fieldError("scheduleDate")}</label></div>}
               <label>{t.notes} ({t.optional})<textarea value={quote.notes} onChange={(event) => updateQuote("notes", event.target.value)} placeholder={t.notesPlaceholder} maxLength={2000} rows="2" /></label>
             </fieldset>
             <fieldset><legend><span>03</span>{t.contactDetails}</legend><div className="field-pair">
               <label>{t.customerName}<input {...fieldProps("name")} value={quote.name} onChange={(event) => updateQuote("name", event.target.value)} placeholder={t.namePlaceholder} autoComplete="name" maxLength={100} required />{fieldError("name")}</label>
               <label>{t.mobile}<input {...fieldProps("phone")} value={quote.phone} onChange={(event) => updateQuote("phone", event.target.value)} placeholder={t.phonePlaceholder} type="tel" inputMode="tel" autoComplete="tel" maxLength={20} required />{fieldError("phone")}</label>
             </div></fieldset>
-            <section className="estimate-summary" aria-labelledby="estimate-title"><h3 id="estimate-title">{t.estimate}</h3><p className="muted">{pricing.priceDate ? `${t.updated}: ${pricing.priceDate}` : t.examples}</p><dl><div><dt>{t.subtotal} ({currency(selectedRate)} × {quote.quantity || 0})</dt><dd>{currency(selectedRate * Number(quote.quantity || 0))}</dd></div><div><dt>{t.surcharge}</dt><dd>{currency(quote.delivery === "Same day" ? sameDaySurcharge : 0)}</dd></div><div className="estimate-total"><dt>{t.estimatedTotal}</dt><dd><output>{currency(total)}</output></dd></div></dl><p className="muted">{t.priceNote}</p></section>
+            <section className="estimate-summary" aria-labelledby="estimate-title"><h3 id="estimate-title">{t.estimate}</h3><p className="muted">{pricing.priceDate ? `${t.updated}: ${pricing.priceDate}` : t.examples}</p>{selectedVehicle ? <dl><div><dt>{t.subtotal} ({currency(selectedRate)} × {quote.quantity || 0})</dt><dd>{currency(selectedRate * Number(quote.quantity || 0))}</dd></div><div><dt>{t.surcharge}</dt><dd>{currency(quote.delivery === "Same day" ? sameDaySurcharge : 0)}</dd></div><div className="estimate-total"><dt>{t.estimatedTotal}</dt><dd><output>{currency(total)}</output></dd></div></dl> : <p>{t.pricePending}</p>}<p className="muted">{t.priceNote}</p></section>
             <div className="form-actions"><button className="button primary" type="submit" disabled={saving} aria-busy={saving}>{saving ? t.saving : t.save}</button><button className="button secondary" type="button" onClick={() => { startJourney(); if (validate("whatsapp")) openWhatsApp(currentLead()); }}><WhatsAppIcon />{t.whatsappOnly}</button></div>
             {quoteStatus && <p className="field-error" role="alert">{quoteStatus}</p>}
           </form>}
@@ -544,7 +549,7 @@ export default function Home() {
             <p>{t.businessText}</p>
           </div>
           <div className="contact-cards">
-            <a href={`tel:+${phoneNumber}`}>
+            <a href={`tel:+${phoneNumber}`} onClick={() => trackQuoteEvent("phone_clicked", { language, phone_location: "contact_section" })}>
               <strong>{t.call}</strong>
               <span>{displayPhone}</span>
             </a>

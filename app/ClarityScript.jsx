@@ -10,6 +10,7 @@ export default function ClarityScript() {
     <Script id="microsoft-clarity" strategy="afterInteractive">
       {`
         (function(c,l,a,r,i,t,y){
+          if (c.location.pathname.startsWith("/admin")) return;
           if (!${JSON.stringify(enableOnLocalhost)} && ["localhost", "127.0.0.1"].includes(c.location.hostname)) return;
           c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
           t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;

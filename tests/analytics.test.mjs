@@ -23,7 +23,10 @@ test('regional SDK setup disables automatic collection and sanitizes events',asy
  api.trackQuoteEvent('quote_started',{language:'hi',phone:'9876543210',notes:'private'});await settle();
  assert.equal(calls[0][2].api_host,'https://api-in.mixpanel.com');
  assert.equal(calls[0][2].ip,true);
- assert.equal(calls[0][2].autocapture,false);assert.equal(calls[0][2].record_sessions_percent,0);
+ assert.equal(calls[0][2].autocapture,false);assert.equal(calls[0][2].record_sessions_percent,100);
+ assert.equal(calls[0][2].record_heatmap_data,true);assert.equal(calls[0][2].record_mask_inputs,true);
+ assert(calls[0][2].record_block_selector.includes("#quote-success"));
+ assert.equal(calls[0][2].record_console,false);assert.equal(calls[0][2].record_network,false);
  assert.deepEqual(calls[1],['track','quote_started',{language:'hi',device_type:'mobile'}]);
  api.trackQuoteEvent('unapproved_event',{});await settle();assert.equal(calls.length,2);
 });
