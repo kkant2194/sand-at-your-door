@@ -12,6 +12,20 @@ import { createQuoteJourney } from "../lib/quoteAnalytics";
 const fallbackPhoneNumber = "917259987874";
 const fallbackEmail = "digitInfra@gmail.com";
 
+function getPatnaDate(date = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(date);
+}
+
+function formatRateDate(date, language) {
+  if (!date) return "";
+  return new Intl.DateTimeFormat(language === "hi" ? "hi-IN" : "en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "Asia/Kolkata",
+  }).format(new Date(`${date}T12:00:00+05:30`));
+}
+
 const defaultVehicles = [
   { id: "tractor", name: "Tractor load", wheels: 2, price: 4200 },
   { id: "truck6", name: "6-wheel truck", wheels: 6, price: 12500 },
@@ -39,7 +53,7 @@ const emptyQuote = {
 
 const copy = {
   en: {
-    requirement: "Your requirement", deliveryDetails: "Delivery details", contactDetails: "Contact details", loads: "Number of loads", capacity: "Load capacity: confirm with our team", choose: "Select application", selected: "Selected", estimate: "Your estimate", subtotal: "Load subtotal", surcharge: "Same-day surcharge", estimatedTotal: "Estimated total", priceNote: "Final price depends on delivery location, site access and unloading. Capacity and delivery availability will be confirmed by our team.", updated: "Last updated", examples: "Example rates · Contact us to confirm", sameDay: "Same day", tomorrow: "Tomorrow", scheduled: "Choose a date", optional: "optional", call: "Call", email: "Email", sendDetails: "Send details on WhatsApp", savedTitle: "Your enquiry is saved", reference: "Enquiry reference", nextSteps: "Our team will contact you to confirm pricing and delivery. You can also send these details on WhatsApp.", errorName: "Enter your name.", errorPhone: "Enter a valid Indian mobile number.", errorAddress: "Enter your delivery address.", errorQuantity: "Choose between 1 and 100 whole loads.", errorDate: "Choose today or a future date.", errorTime: "Choose a delivery time.", errorVehicle: "Select a vehicle.", saveError: "We couldn’t save your enquiry. Your details are still here. Please retry or contact us on WhatsApp.", namePlaceholder: "Your full name", phonePlaceholder: "10-digit mobile number", addressPlaceholder: "Site address, locality, PIN code and nearby landmark", notesPlaceholder: "Site access, unloading needs or sand specifications", coverage: "Delivery in Patna", coverageText: "Share your site location so our team can confirm delivery coverage and access.", business: "Digit Infra Pvt LTD", businessText: "Patna, Bihar · 800020", availability: "Confirm delivery availability", availabilityText: "Call or WhatsApp for operating hours and available delivery slots.", illustration: "Illustrative construction images", back: "Back to top", perLoad: "per load", saving: "Sending…", startAgain: "Request another quote",
+    requirement: "Your requirement", deliveryDetails: "Delivery details", contactDetails: "Contact details", loads: "Number of loads", capacity: "Load capacity: confirm with our team", choose: "Select application", selected: "Selected", estimate: "Your estimate", subtotal: "Load subtotal", surcharge: "Same-day surcharge", estimatedTotal: "Estimated total", priceNote: "Final price depends on delivery location, site access and unloading. Capacity and delivery availability will be confirmed by our team.", todayLabel: "Today's Rate", examples: "Example rates · Contact us to confirm", sameDay: "Same day", tomorrow: "Tomorrow", scheduled: "Choose a date", optional: "optional", call: "Call", email: "Email", sendDetails: "Send details on WhatsApp", savedTitle: "Your enquiry is saved", reference: "Enquiry reference", nextSteps: "Our team will contact you to confirm pricing and delivery. You can also send these details on WhatsApp.", errorName: "Enter your name.", errorPhone: "Enter a valid Indian mobile number.", errorAddress: "Enter your delivery address.", errorQuantity: "Choose between 1 and 100 whole loads.", errorDate: "Choose today or a future date.", errorTime: "Choose a delivery time.", errorVehicle: "Select a vehicle.", saveError: "We couldn’t save your enquiry. Your details are still here. Please retry or contact us on WhatsApp.", namePlaceholder: "Your full name", phonePlaceholder: "10-digit mobile number", addressPlaceholder: "Site address, locality, PIN code and nearby landmark", notesPlaceholder: "Site access, unloading needs or sand specifications", coverage: "Delivery in Patna", coverageText: "Share your site location so our team can confirm delivery coverage and access.", business: "Digit Infra Pvt LTD", businessText: "Patna, Bihar · 800020", availability: "Confirm delivery availability", availabilityText: "Call or WhatsApp for operating hours and available delivery slots.", illustration: "Illustrative construction images", back: "Back to top", perLoad: "per load", saving: "Sending…", startAgain: "Request another quote",
     errorApplication: "Select a sand application.",
     products: "Applications",
     quote: "Quote",
@@ -86,7 +100,7 @@ const copy = {
     saved: "Enquiry saved. Opening WhatsApp for quick confirmation.",
   },
   hi: {
-    requirement: "आपकी जरूरत", deliveryDetails: "डिलीवरी की जानकारी", contactDetails: "संपर्क की जानकारी", loads: "लोड की संख्या", capacity: "लोड क्षमता: टीम से पुष्टि करें", choose: "उपयोग चुनें", selected: "चुना गया", estimate: "आपका अनुमान", subtotal: "लोड की कीमत", surcharge: "उसी दिन डिलीवरी शुल्क", estimatedTotal: "अनुमानित कुल", priceNote: "अंतिम रेट लोकेशन, साइट के रास्ते और अनलोडिंग पर निर्भर है। हमारी टीम क्षमता और डिलीवरी की उपलब्धता की पुष्टि करेगी।", updated: "अंतिम अपडेट", examples: "उदाहरण रेट · पुष्टि के लिए संपर्क करें", sameDay: "उसी दिन", tomorrow: "कल", scheduled: "तारीख चुनें", optional: "वैकल्पिक", call: "कॉल करें", email: "ईमेल", sendDetails: "जानकारी व्हाट्सऐप पर भेजें", savedTitle: "आपका अनुरोध सेव हो गया", reference: "अनुरोध संदर्भ", nextSteps: "हमारी टीम रेट और डिलीवरी की पुष्टि के लिए संपर्क करेगी। आप यह जानकारी व्हाट्सऐप पर भी भेज सकते हैं।", errorName: "अपना नाम लिखें।", errorPhone: "सही भारतीय मोबाइल नंबर लिखें।", errorAddress: "डिलीवरी का पता लिखें।", errorQuantity: "1 से 100 तक पूरे लोड चुनें।", errorDate: "आज या आगे की तारीख चुनें।", errorTime: "डिलीवरी का समय चुनें।", errorVehicle: "वाहन चुनें।", saveError: "अनुरोध सेव नहीं हुआ। आपकी जानकारी सुरक्षित है। फिर कोशिश करें या व्हाट्सऐप पर संपर्क करें।", namePlaceholder: "आपका पूरा नाम", phonePlaceholder: "10 अंकों का मोबाइल नंबर", addressPlaceholder: "साइट का पता, इलाका, पिन कोड और पास की पहचान", notesPlaceholder: "साइट का रास्ता, अनलोडिंग या बालू की आवश्यकताएं", coverage: "पटना में डिलीवरी", coverageText: "डिलीवरी क्षेत्र और रास्ते की पुष्टि के लिए साइट की लोकेशन बताएं।", business: "Digit Infra Pvt LTD", businessText: "पटना, बिहार · 800020", availability: "डिलीवरी की उपलब्धता पूछें", availabilityText: "काम के समय और डिलीवरी स्लॉट के लिए कॉल या व्हाट्सऐप करें।", illustration: "निर्माण के उदाहरणात्मक चित्र", back: "ऊपर जाएं", perLoad: "प्रति लोड", saving: "भेजा जा रहा है…", startAgain: "नया अनुरोध भेजें",
+    requirement: "आपकी जरूरत", deliveryDetails: "डिलीवरी की जानकारी", contactDetails: "संपर्क की जानकारी", loads: "लोड की संख्या", capacity: "लोड क्षमता: टीम से पुष्टि करें", choose: "उपयोग चुनें", selected: "चुना गया", estimate: "आपका अनुमान", subtotal: "लोड की कीमत", surcharge: "उसी दिन डिलीवरी शुल्क", estimatedTotal: "अनुमानित कुल", priceNote: "अंतिम रेट लोकेशन, साइट के रास्ते और अनलोडिंग पर निर्भर है। हमारी टीम क्षमता और डिलीवरी की उपलब्धता की पुष्टि करेगी।", todayLabel: "आज का रेट", examples: "उदाहरण रेट · पुष्टि के लिए संपर्क करें", sameDay: "उसी दिन", tomorrow: "कल", scheduled: "तारीख चुनें", optional: "वैकल्पिक", call: "कॉल करें", email: "ईमेल", sendDetails: "जानकारी व्हाट्सऐप पर भेजें", savedTitle: "आपका अनुरोध सेव हो गया", reference: "अनुरोध संदर्भ", nextSteps: "हमारी टीम रेट और डिलीवरी की पुष्टि के लिए संपर्क करेगी। आप यह जानकारी व्हाट्सऐप पर भी भेज सकते हैं।", errorName: "अपना नाम लिखें।", errorPhone: "सही भारतीय मोबाइल नंबर लिखें।", errorAddress: "डिलीवरी का पता लिखें।", errorQuantity: "1 से 100 तक पूरे लोड चुनें।", errorDate: "आज या आगे की तारीख चुनें।", errorTime: "डिलीवरी का समय चुनें।", errorVehicle: "वाहन चुनें।", saveError: "अनुरोध सेव नहीं हुआ। आपकी जानकारी सुरक्षित है। फिर कोशिश करें या व्हाट्सऐप पर संपर्क करें।", namePlaceholder: "आपका पूरा नाम", phonePlaceholder: "10 अंकों का मोबाइल नंबर", addressPlaceholder: "साइट का पता, इलाका, पिन कोड और पास की पहचान", notesPlaceholder: "साइट का रास्ता, अनलोडिंग या बालू की आवश्यकताएं", coverage: "पटना में डिलीवरी", coverageText: "डिलीवरी क्षेत्र और रास्ते की पुष्टि के लिए साइट की लोकेशन बताएं।", business: "Digit Infra Pvt LTD", businessText: "पटना, बिहार · 800020", availability: "डिलीवरी की उपलब्धता पूछें", availabilityText: "काम के समय और डिलीवरी स्लॉट के लिए कॉल या व्हाट्सऐप करें।", illustration: "निर्माण के उदाहरणात्मक चित्र", back: "ऊपर जाएं", perLoad: "प्रति लोड", saving: "भेजा जा रहा है…", startAgain: "नया अनुरोध भेजें",
     errorApplication: "बालू का उपयोग चुनें।",
     products: "उपयोग",
     quote: "भाव",
@@ -199,6 +213,7 @@ function WhatsAppIcon() {
 
 export default function Home() {
   const [language, setLanguage] = useState("en");
+  const [today, setToday] = useState(() => getPatnaDate());
   const [quote, setQuote] = useState(emptyQuote);
   const [pricing, setPricing] = useState(defaultPricing);
   const [pricingStatus, setPricingStatus] = useState("loading");
@@ -215,6 +230,9 @@ export default function Home() {
   const pageTracked = useRef(false);
   const analyticsContext = useRef({});
   const t = copy[language];
+  const pricingDateSummary = pricing.priceDate
+    ? `${t.todayLabel}: ${formatRateDate(today, language)}`
+    : t.examples;
   const phoneNumber = normalizePhoneNumber(contactPhone);
   const displayPhone = formatPhoneNumber(phoneNumber);
 
@@ -223,7 +241,10 @@ export default function Home() {
   const total = selectedVehicle ? Math.round(selectedRate * Number(quote.quantity || 0) + (quote.delivery === "Same day" ? sameDaySurcharge : 0)) : null;
 
   const applications = [{ value: "Plaster", key: "plaster" }, { value: "RCC (General)", key: "rcc" }, { value: "Terrace Slab", key: "terrace" }, { value: "Raft Foundation", key: "raft" }];
-  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
+  useEffect(() => {
+    const timer = window.setInterval(() => setToday(getPatnaDate()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
   function quoteProperties(current = quote) {
     return { language, application: current.sandType,
       vehicle_type: ["tractor", "truck6", "truck10", "truck12", "truck16"].includes(current.vehicleId) ? current.vehicleId : current.vehicleId ? "custom" : "unavailable",
@@ -460,7 +481,7 @@ export default function Home() {
       </header>
 
       <section className="ticker" aria-label={t.rates} aria-busy={pricingStatus === "loading"}>
-        <div className="ticker-badge">{pricingStatus === "ready" && <span className="rates-indicator" aria-hidden="true" />}<strong role="status">{pricingStatus === "loading" ? t.ratesLoading : pricingStatus === "unavailable" ? t.ratesUnavailable : pricing.priceDate ? `${pricing.priceDate === today ? (language === "hi" ? "आज के रेट" : "Today rates") : t.rates} · ${pricing.priceDate}` : t.examples}</strong></div>
+        <div className="ticker-badge">{pricingStatus === "ready" && <span className="rates-indicator" aria-hidden="true" />}<strong role="status">{pricingStatus === "loading" ? t.ratesLoading : pricingStatus === "unavailable" ? t.ratesUnavailable : pricingDateSummary}</strong></div>
         {pricingStatus === "ready" && <div className="ticker-track">{[0, 1].map((repeat) => <span key={repeat} aria-hidden={repeat === 1 ? true : undefined}>{pricing.vehicles.map((vehicle) => <em key={vehicle.id}>{displayVehicle(vehicle)} <b>{currency(vehicle.price)}</b></em>)}</span>)}</div>}
       </section>
       <main id="home">
@@ -534,7 +555,7 @@ export default function Home() {
               <label>{t.customerName}<input {...fieldProps("name")} value={quote.name} onChange={(event) => updateQuote("name", event.target.value)} placeholder={t.namePlaceholder} autoComplete="name" maxLength={100} required />{fieldError("name")}</label>
               <label>{t.mobile}<input {...fieldProps("phone")} value={quote.phone} onChange={(event) => updateQuote("phone", event.target.value)} placeholder={t.phonePlaceholder} type="tel" inputMode="tel" autoComplete="tel" maxLength={20} required />{fieldError("phone")}</label>
             </div></fieldset>
-            <section className="estimate-summary" aria-labelledby="estimate-title"><h3 id="estimate-title">{t.estimate}</h3><p className="muted">{pricing.priceDate ? `${t.updated}: ${pricing.priceDate}` : t.examples}</p>{selectedVehicle ? <dl><div><dt>{t.subtotal} ({currency(selectedRate)} × {quote.quantity || 0})</dt><dd>{currency(selectedRate * Number(quote.quantity || 0))}</dd></div><div><dt>{t.surcharge}</dt><dd>{currency(quote.delivery === "Same day" ? sameDaySurcharge : 0)}</dd></div><div className="estimate-total"><dt>{t.estimatedTotal}</dt><dd><output>{currency(total)}</output></dd></div></dl> : <p>{t.pricePending}</p>}<p className="muted">{t.priceNote}</p></section>
+            <section className="estimate-summary" aria-labelledby="estimate-title"><h3 id="estimate-title">{t.estimate}</h3><p className="muted">{pricingDateSummary}</p>{selectedVehicle ? <dl><div><dt>{t.subtotal} ({currency(selectedRate)} × {quote.quantity || 0})</dt><dd>{currency(selectedRate * Number(quote.quantity || 0))}</dd></div><div><dt>{t.surcharge}</dt><dd>{currency(quote.delivery === "Same day" ? sameDaySurcharge : 0)}</dd></div><div className="estimate-total"><dt>{t.estimatedTotal}</dt><dd><output>{currency(total)}</output></dd></div></dl> : <p>{t.pricePending}</p>}<p className="muted">{t.priceNote}</p></section>
             <div className="form-actions"><button className="button primary" type="submit" disabled={saving} aria-busy={saving}>{saving ? t.saving : t.save}</button><button className="button secondary" type="button" onClick={() => { startJourney(); if (validate("whatsapp")) openWhatsApp(currentLead()); }}><WhatsAppIcon />{t.whatsappOnly}</button></div>
             {quoteStatus && <p className="field-error" role="alert">{quoteStatus}</p>}
           </form>}
