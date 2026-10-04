@@ -366,8 +366,7 @@ export default function Home() {
   }
 
   function leadMessage(lead) {
-    return [
-      lead.reference ? `${t.reference}: ${lead.reference}` : "",
+    const details = [
       `${t.customerName}: ${lead.name}`,
       `${t.mobile}: ${lead.phone}`,
       `${t.address}: ${lead.address}`,
@@ -376,13 +375,14 @@ export default function Home() {
       lead.quantity ? `${t.loads}: ${lead.quantity}` : "",
       lead.delivery ? `${t.timing}: ${t[lead.delivery === "Same day" ? "sameDay" : lead.delivery === "Tomorrow" ? "tomorrow" : "scheduled"]}` : "",
       lead.scheduleDate ? `${t.date}: ${lead.scheduleDate}` : "",
-      lead.priceDate ? `${t.updated}: ${lead.priceDate}` : "",
       lead.vehicleId ? `${t.rates}: ${currency(lead.rate)}` : "",
       lead.total != null && lead.vehicleId ? `${t.estimatedTotal}: ${currency(lead.total)}` : "",
       lead.notes ? `${t.notes}: ${lead.notes}` : "",
-    ]
-      .filter(Boolean)
-      .join("\n");
+    ].filter(Boolean).join("\n");
+    const introduction = lead.reference
+      ? `I just submitted Enquiry #${lead.reference} with the following details:`
+      : "I would like a quote. Here are my details:";
+    return `Hi Digit Infra,\n\n${introduction}\n\n${details}\n\nPlease confirm the final delivered price.`;
   }
 
   function openWhatsApp(lead, location = "quote_form") {
