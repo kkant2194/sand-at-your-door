@@ -26,7 +26,8 @@ export async function POST(request) {
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
   if (!body || !requiredText(body.name) || !requiredText(body.phone) || !requiredText(body.address) || !requiredText(body.name, 100)
     || typeof body.phone !== "string" || !/^(?:\+?91|0)?[6-9]\d{9}$/.test(body.phone.replace(/[ ()-]/g, ""))
-    || (body.quantity != null && body.quantity !== "" && (!Number.isInteger(body.quantity) || body.quantity < 1 || body.quantity > 100))
+    || (body.quantity != null && body.quantity !== "" && (body.quantity !== 0 || body.vehicleId)
+      && (!Number.isInteger(body.quantity) || body.quantity < 1 || body.quantity > 100))
     || (body.sandType && !["Plaster", "RCC (General)", "Terrace Slab", "Raft Foundation"].includes(body.sandType))
     || (body.delivery && !["Same day", "Tomorrow", "Scheduled"].includes(body.delivery))
     || (body.vehicleId && !requiredText(body.vehicleId, 100)) || (body.notes && !requiredText(body.notes, 2000))
@@ -82,5 +83,6 @@ export async function POST(request) {
     return NextResponse.json({ error: "Could not save your enquiry. Please retry or contact us directly." }, { status: 500 });
   }
 
-  return NextResponse.json({ success: true, id: data.id, rate, total, priceDate: vehicle ? pricing.price_date : null, vehicleName: vehicle?.name || "To be confirmed", priced: Boolean(vehicle) });
+  const reference = data.id.replaceAll("-", "").slice(0, 10).toUpperCase();
+  return NextResponse.json({ success: true, id: data.id, reference, rate, total, priceDate: vehicle ? pricing.price_date : null, vehicleName: vehicle?.name || "To be confirmed", priced: Boolean(vehicle) });
 }

@@ -30,7 +30,7 @@ const emptyQuote = {
   phone: "",
   address: "",
   sandType: "",
-  quantity: 1,
+  quantity: 0,
   vehicleId: "",
   delivery: "Same day",
   scheduleDate: "",
@@ -119,7 +119,7 @@ const copy = {
     mobile: "मोबाइल नंबर",
     address: "डिलीवरी पता",
     sandType: "बालू का उपयोग",
-    quantity: "मात्रा",
+    quantity: "लोड की संख्या (वैकल्पिक)",
     vehicle: "वाहन",
     timing: "डिलीवरी समय",
     date: "डिलीवरी तारीख",
@@ -288,7 +288,7 @@ export default function Home() {
     if (!quote.name.trim()) next.name = t.errorName;
     if (!/^(?:\+?91|0)?[6-9]\d{9}$/.test(quote.phone.replace(/[ ()-]/g, ""))) next.phone = t.errorPhone;
     if (!quote.address.trim()) next.address = t.errorAddress;
-    if (!Number.isInteger(Number(quote.quantity)) || Number(quote.quantity) < 1 || Number(quote.quantity) > 100) next.quantity = t.errorQuantity;
+    if ((selectedVehicle || Number(quote.quantity) > 0) && (!Number.isInteger(Number(quote.quantity)) || Number(quote.quantity) < 1 || Number(quote.quantity) > 100)) next.quantity = t.errorQuantity;
     if (quote.delivery === "Scheduled" && quote.scheduleDate) {
       if (!quote.scheduleDate || quote.scheduleDate < today) next.scheduleDate = t.errorDate;
     }
@@ -357,7 +357,7 @@ export default function Home() {
   function currentLead() {
     return {
       ...quote,
-      quantity: Math.max(Number(quote.quantity) || 1, 1),
+      quantity: Math.max(Number(quote.quantity) || 0, 0),
       vehicleName: selectedVehicle ? vehicleLabel(selectedVehicle) : "Vehicle",
       rate: selectedRate,
       priceDate: pricing.priceDate,
@@ -367,18 +367,18 @@ export default function Home() {
 
   function leadMessage(lead) {
     return [
-      language === "hi" ? "बालू की नई जरूरत" : "New sand requirement",
-      lead.id ? `${t.reference}: ${lead.id}` : "",
+      lead.reference ? `${t.reference}: ${lead.reference}` : "",
       `${t.customerName}: ${lead.name}`,
       `${t.mobile}: ${lead.phone}`,
       `${t.address}: ${lead.address}`,
       lead.sandType ? `${t.sandType}: ${t[applications.find((item) => item.value === lead.sandType)?.key] || lead.sandType}` : "",
-      lead.vehicleId ? `${t.vehicle}: ${lead.vehicleName}` : t.pricePending,
-      `${t.loads}: ${lead.quantity}`,
-      `${t.updated}: ${lead.priceDate || t.examples}`,
-      lead.vehicleId ? `${t.rates}: ${currency(lead.rate)}` : "",
+      lead.vehicleId ? `${t.vehicle}: ${lead.vehicleName}` : "",
+      lead.quantity ? `${t.loads}: ${lead.quantity}` : "",
+      lead.delivery ? `${t.timing}: ${t[lead.delivery === "Same day" ? "sameDay" : lead.delivery === "Tomorrow" ? "tomorrow" : "scheduled"]}` : "",
       lead.scheduleDate ? `${t.date}: ${lead.scheduleDate}` : "",
-      lead.total != null ? `${t.estimatedTotal}: ${currency(lead.total)}` : "",
+      lead.priceDate ? `${t.updated}: ${lead.priceDate}` : "",
+      lead.vehicleId ? `${t.rates}: ${currency(lead.rate)}` : "",
+      lead.total != null && lead.vehicleId ? `${t.estimatedTotal}: ${currency(lead.total)}` : "",
       lead.notes ? `${t.notes}: ${lead.notes}` : "",
     ]
       .filter(Boolean)
@@ -506,7 +506,7 @@ export default function Home() {
           <div>
           {savedLead ? <section className="success-panel" data-clarity-mask="true" id="quote-success" tabIndex={-1} aria-labelledby="success-title">
             <span className="success-check" aria-hidden="true">✓</span><h3 id="success-title">{t.savedTitle}</h3><p>{t.nextSteps}</p>
-            <small>{t.reference}</small><code>{savedLead.id}</code><p>{savedLead.priced ? <>{t.estimatedTotal}: <strong>{currency(savedLead.total)}</strong></> : t.pricePending}</p>
+            <small>{t.reference}</small><code>{savedLead.reference}</code><p>{savedLead.priced ? <>{t.estimatedTotal}: <strong>{currency(savedLead.total)}</strong></> : t.pricePending}</p>
             <button className="button primary" onClick={() => openWhatsApp(savedLead, "saved_confirmation")}><WhatsAppIcon />{t.sendDetails}</button>
             <button className="button secondary" onClick={newJourney}>{t.startAgain}</button>
           </section> : <form className="quote-form" onSubmit={saveQuote} noValidate data-clarity-mask="true">
@@ -515,11 +515,11 @@ export default function Home() {
               <div className="quantity-field">
                 <label htmlFor="quote-quantity">{t.loads}</label>
                 <div className="quantity-stepper">
-                  <button type="button" aria-label={language === "hi" ? "एक लोड कम करें" : "Decrease loads"} disabled={Number(quote.quantity) <= 1} onClick={() => updateQuote("quantity", Math.max(1, (Number(quote.quantity) || 1) - 1))}>−</button>
-                  <input {...fieldProps("quantity")} value={quote.quantity} onChange={(event) => updateQuote("quantity", event.target.value)} type="number" inputMode="numeric" min="1" max="100" step="1" required aria-describedby={errors.quantity ? "error-quantity quantity-help" : "quantity-help"} />
+                  <button type="button" aria-label={language === "hi" ? "एक लोड कम करें" : "Decrease loads"} disabled={Number(quote.quantity) <= 0} onClick={() => updateQuote("quantity", Math.max(0, (Number(quote.quantity) || 0) - 1))}>−</button>
+                  <input {...fieldProps("quantity")} value={quote.quantity} onChange={(event) => updateQuote("quantity", event.target.value)} type="number" inputMode="numeric" min="0" max="100" step="1" aria-describedby={errors.quantity ? "error-quantity quantity-help" : "quantity-help"} />
                   <button type="button" aria-label={language === "hi" ? "एक लोड बढ़ाएं" : "Increase loads"} disabled={Number(quote.quantity) >= 100} onClick={() => updateQuote("quantity", Math.min(100, (Number(quote.quantity) || 0) + 1))}>+</button>
                 </div>
-                <small className="muted" id="quantity-help">{language === "hi" ? "लोड की संख्या लिखें या + / − दबाएं (1–100)।" : "Type a number or use + / − (1–100 loads)."}</small>
+                <small className="muted" id="quantity-help">{language === "hi" ? "पता न हो तो 0 छोड़ें या 1–100 लोड लिखें।" : "Leave 0 if unsure, or enter 1–100 loads."}</small>
                 {fieldError("quantity")}
               </div></div>
               <fieldset className="vehicle-fieldset"><legend>{t.vehicle} ({t.optional})</legend><div className="vehicle-options">{pricing.vehicles.map((vehicle) => <label className={`vehicle-option ${quote.vehicleId === vehicle.id ? "selected" : ""}`} key={vehicle.id}><input type="radio" name="vehicle" value={vehicle.id} checked={quote.vehicleId === vehicle.id} onChange={() => updateQuote("vehicleId", vehicle.id)} /><span>{displayVehicle(vehicle)}<strong>{currency(vehicle.price)}</strong></span></label>)}</div><small className="muted">{t.capacity}</small>{fieldError("vehicleId")}</fieldset>
