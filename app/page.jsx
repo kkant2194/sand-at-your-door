@@ -1,5 +1,7 @@
 "use client";
 
+import { parseEstimatedCapacity } from "../lib/vehicleCapacity";
+
 import Image from "next/image";
 import { formatDisplayDate } from "../lib/dateFormat";
 import { useEffect, useRef, useState } from "react";
@@ -23,11 +25,11 @@ function formatRateDate(date) {
 }
 
 const defaultVehicles = [
-  { id: "tractor", name: "Tractor load", wheels: 2, price: 4200 },
-  { id: "truck6", name: "6-wheel truck", wheels: 6, price: 12500 },
-  { id: "truck10", name: "10-wheel truck", wheels: 10, price: 18500 },
-  { id: "truck12", name: "12-wheel truck", wheels: 12, price: 22500 },
-  { id: "truck16", name: "16-wheel truck", wheels: 16, price: 29500 },
+  { id: "tractor", name: "Tractor load", estimatedCapacityCft: null, price: 4200 },
+  { id: "truck6", name: "6-wheel truck", estimatedCapacityCft: null, price: 12500 },
+  { id: "truck10", name: "10-wheel truck", estimatedCapacityCft: null, price: 18500 },
+  { id: "truck12", name: "12-wheel truck", estimatedCapacityCft: null, price: 22500 },
+  { id: "truck16", name: "16-wheel truck", estimatedCapacityCft: null, price: 29500 },
 ];
 
 const defaultPricing = {
@@ -180,7 +182,7 @@ function normalizePricing(row) {
     vehicles: row.rates.vehicles.map((vehicle) => ({
       id: String(vehicle.id || crypto.randomUUID()),
       name: String(vehicle.name || "Vehicle"),
-      wheels: Number(vehicle.wheels || 0),
+      estimatedCapacityCft: parseEstimatedCapacity(vehicle.estimatedCapacityCft),
       price: Number(vehicle.price || 0),
     })),
   };
@@ -284,8 +286,14 @@ export default function Home() {
   function displayVehicle(vehicle) {
     if (language === "en") return vehicle.name;
     if (vehicle.id === "tractor") return "ट्रैक्टर लोड";
-    if (/^truck/.test(vehicle.id) && vehicle.wheels) return `${vehicle.wheels} पहियों वाला ट्रक`;
+    const wheels = vehicle.name.match(/^(\d+)-wheel truck$/i)?.[1];
+    if (wheels) return `${wheels} पहियों वाला ट्रक`;
     return vehicle.name;
+  }
+  function capacityLabel(value) {
+    const capacity = parseEstimatedCapacity(value);
+    if (capacity === null) return language === "hi" ? "क्षमता की पुष्टि बाकी है" : "Capacity awaiting confirmation";
+    return language === "hi" ? `लगभग ${capacity} cft/लोड` : `Approx. ${capacity} cft/load`;
   }
   useEffect(() => {
     try { if (localStorage.getItem("sand-language") === "hi") setLanguage("hi"); } catch {}
@@ -374,6 +382,7 @@ export default function Home() {
       ...quote,
       quantity: Math.max(Number(quote.quantity) || 0, 0),
       vehicleName: selectedVehicle ? vehicleLabel(selectedVehicle) : "Vehicle",
+      estimatedCapacityCft: selectedVehicle?.estimatedCapacityCft ?? null,
       rate: selectedRate,
       priceDate: pricing.priceDate,
       total,
@@ -387,6 +396,7 @@ export default function Home() {
       `${t.address}: ${lead.address}`,
       lead.sandType ? `${t.sandType}: ${t[applications.find((item) => item.value === lead.sandType)?.key] || lead.sandType}` : "",
       lead.vehicleId ? `${t.vehicle}: ${lead.vehicleName}` : "",
+      lead.vehicleId && lead.estimatedCapacityCft ? capacityLabel(lead.estimatedCapacityCft) : "",
       lead.quantity ? `${t.loads}: ${lead.quantity}` : "",
       lead.delivery ? `${t.timing}: ${t[lead.delivery === "Same day" ? "sameDay" : lead.delivery === "Tomorrow" ? "tomorrow" : "scheduled"]}` : "",
       lead.scheduleDate ? `${t.date}: ${formatDisplayDate(lead.scheduleDate)}` : "",
@@ -476,7 +486,7 @@ export default function Home() {
 
       <section className="ticker" aria-label={t.rates} aria-busy={pricingStatus === "loading"}>
         <div className="ticker-badge">{pricingStatus === "ready" && <span className="rates-indicator" aria-hidden="true" />}<strong role="status">{pricingStatus === "loading" ? t.ratesLoading : pricingStatus === "unavailable" ? t.ratesUnavailable : pricingDateSummary}</strong></div>
-        {pricingStatus === "ready" && <div className="ticker-track">{[0, 1].map((repeat) => <span key={repeat} aria-hidden={repeat === 1 ? true : undefined}>{pricing.vehicles.map((vehicle) => <em key={vehicle.id}>{displayVehicle(vehicle)} <b>{currency(vehicle.price)}</b></em>)}</span>)}</div>}
+        {pricingStatus === "ready" && <div className="ticker-track">{[0, 1].map((repeat) => <span key={repeat} aria-hidden={repeat === 1 ? true : undefined}>{pricing.vehicles.map((vehicle) => <em key={vehicle.id}>{displayVehicle(vehicle)} <b>{currency(vehicle.price)} / {t.perLoad}</b> · {capacityLabel(vehicle.estimatedCapacityCft)}</em>)}</span>)}</div>}
       </section>
       <main id="home">
         <section className="hero">
@@ -519,7 +529,7 @@ export default function Home() {
 
           <div>
           {savedLead ? <section className="success-panel" data-clarity-mask="true" id="quote-success" tabIndex={-1} aria-labelledby="success-title">
-            <span className="success-check" aria-hidden="true">✓</span><h3 id="success-title">{t.savedTitle}</h3><p>{t.nextSteps}</p>
+            <span className="success-check" aria-hidden="true">✓</span><h3 id="success-title">{t.savedTitle}</h3><p>{t.nextSteps}</p>{savedLead.estimatedCapacityCft && <p>{capacityLabel(savedLead.estimatedCapacityCft)}</p>}
             <small>{t.reference}</small><code>{savedLead.reference}</code><p>{savedLead.priced ? <>{t.estimatedTotal}: <strong>{currency(savedLead.total)}</strong></> : t.pricePending}</p>
             <button className="button primary" onClick={() => openWhatsApp(savedLead, "saved_confirmation")}><WhatsAppIcon />{t.sendDetails}</button>
             <button className="button secondary" onClick={newJourney}>{t.startAgain}</button>
@@ -536,7 +546,7 @@ export default function Home() {
                 <small className="muted" id="quantity-help">{language === "hi" ? "पता न हो तो 0 छोड़ें या 1–100 लोड लिखें।" : "Leave 0 if unsure, or enter 1–100 loads."}</small>
                 {fieldError("quantity")}
               </div></div>
-              <fieldset className="vehicle-fieldset"><legend>{t.vehicle} ({t.optional})</legend><div className="vehicle-options">{pricing.vehicles.map((vehicle) => <label className={`vehicle-option ${quote.vehicleId === vehicle.id ? "selected" : ""}`} key={vehicle.id}><input type="radio" name="vehicle" value={vehicle.id} checked={quote.vehicleId === vehicle.id} onChange={() => updateQuote("vehicleId", vehicle.id)} /><span>{displayVehicle(vehicle)}<strong>{currency(vehicle.price)}</strong></span></label>)}</div><small className="muted">{t.capacity}</small>{fieldError("vehicleId")}</fieldset>
+              <fieldset className="vehicle-fieldset"><legend>{t.vehicle} ({t.optional})</legend><div className="vehicle-options">{pricing.vehicles.map((vehicle) => <label className={`vehicle-option ${quote.vehicleId === vehicle.id ? "selected" : ""}`} key={vehicle.id}><input type="radio" name="vehicle" value={vehicle.id} checked={quote.vehicleId === vehicle.id} onChange={() => updateQuote("vehicleId", vehicle.id)} /><span>{displayVehicle(vehicle)}<strong>{currency(vehicle.price)} / {t.perLoad}</strong><small>{capacityLabel(vehicle.estimatedCapacityCft)}</small></span></label>)}</div><small className="muted">{t.capacity}</small>{fieldError("vehicleId")}</fieldset>
             </fieldset>
             <fieldset><legend><span>02</span>{t.deliveryDetails}</legend>
               <label>{t.address}<textarea {...fieldProps("address")} value={quote.address} onChange={(event) => updateQuote("address", event.target.value)} placeholder={t.addressPlaceholder} autoComplete="street-address" maxLength={1000} rows="3" required />{fieldError("address")}</label>

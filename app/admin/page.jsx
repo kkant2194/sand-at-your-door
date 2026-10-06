@@ -1,5 +1,7 @@
 "use client";
 
+import { parseEstimatedCapacity } from "../../lib/vehicleCapacity";
+
 import { useEffect, useState } from "react";
 import { formatDisplayDate } from "../../lib/dateFormat";
 import { isSupabaseConfigured, supabase } from "../../lib/supabaseClient";
@@ -7,11 +9,11 @@ import { isSupabaseConfigured, supabase } from "../../lib/supabaseClient";
 import { DEFAULT_SAME_DAY_SURCHARGE, getSameDaySurcharge, parseSameDaySurcharge } from "../../lib/deliveryPricing";
 
 const defaultVehicles = [
-  { id: "tractor", name: "Tractor load", wheels: 2, price: 4200 },
-  { id: "truck6", name: "6-wheel truck", wheels: 6, price: 12500 },
-  { id: "truck10", name: "10-wheel truck", wheels: 10, price: 18500 },
-  { id: "truck12", name: "12-wheel truck", wheels: 12, price: 22500 },
-  { id: "truck16", name: "16-wheel truck", wheels: 16, price: 29500 },
+  { id: "tractor", name: "Tractor load", estimatedCapacityCft: null, price: 4200 },
+  { id: "truck6", name: "6-wheel truck", estimatedCapacityCft: null, price: 12500 },
+  { id: "truck10", name: "10-wheel truck", estimatedCapacityCft: null, price: 18500 },
+  { id: "truck12", name: "12-wheel truck", estimatedCapacityCft: null, price: 22500 },
+  { id: "truck16", name: "16-wheel truck", estimatedCapacityCft: null, price: 29500 },
 ];
 
 const defaultPricing = {
@@ -67,7 +69,7 @@ function normalizePricing(row) {
       vehicles: row.rates.vehicles.map((vehicle) => ({
         id: String(vehicle.id || crypto.randomUUID()),
         name: String(vehicle.name || "Vehicle"),
-        wheels: Number(vehicle.wheels || 0),
+        estimatedCapacityCft: parseEstimatedCapacity(vehicle.estimatedCapacityCft),
         price: Number(vehicle.price || 0),
       })),
     };
@@ -228,7 +230,7 @@ export default function AdminPage() {
   function addVehicle() {
     setPricing((current) => ({
       ...current,
-      vehicles: [...current.vehicles, { id: crypto.randomUUID(), name: "New vehicle", wheels: 0, price: 0 }],
+      vehicles: [...current.vehicles, { id: crypto.randomUUID(), name: "New vehicle", estimatedCapacityCft: null, price: 0 }],
     }));
   }
 
@@ -239,7 +241,7 @@ export default function AdminPage() {
         vehicle.id === id
           ? {
               ...vehicle,
-              [field]: field === "name" ? value : Math.max(Number(value) || 0, 0),
+              [field]: field === "name" || field === "estimatedCapacityCft" ? value : Math.max(Number(value) || 0, 0),
             }
           : vehicle,
       ),
@@ -260,17 +262,21 @@ export default function AdminPage() {
       return;
     }
 
+    if (pricing.vehicles.some((vehicle) => vehicle.estimatedCapacityCft != null && vehicle.estimatedCapacityCft !== "" && parseEstimatedCapacity(vehicle.estimatedCapacityCft) === null)) {
+      setPricingStatus("Capacity must be a positive number, or left blank when unknown.");
+      return;
+    }
     const vehicles = pricing.vehicles
       .filter((vehicle) => vehicle.name.trim())
       .map((vehicle) => ({
         id: vehicle.id,
         name: vehicle.name.trim(),
-        wheels: Number(vehicle.wheels || 0),
+        estimatedCapacityCft: parseEstimatedCapacity(vehicle.estimatedCapacityCft),
         price: Number(vehicle.price || 0),
       }));
 
-    if (!vehicles.length || vehicles.some((vehicle) => !Number.isFinite(vehicle.price) || vehicle.price <= 0 || !Number.isInteger(vehicle.wheels))) {
-      setPricingStatus("Add at least one vehicle with a positive price and a whole wheel count.");
+    if (!vehicles.length || vehicles.some((vehicle) => !Number.isFinite(vehicle.price) || vehicle.price <= 0)) {
+      setPricingStatus("Add at least one vehicle with a positive price. Capacity is optional.");
       return;
     }
 
@@ -351,7 +357,7 @@ export default function AdminPage() {
           <nav className="admin-tabs" aria-label="Dashboard sections">{["enquiries","pricing","settings"].map((tab)=><button key={tab} aria-current={activeTab===tab ? "page" : undefined} className={activeTab===tab ? "active" : ""} onClick={()=>setActiveTab(tab)}>{tab === "enquiries" ? "Customer enquiries" : tab === "pricing" ? "Vehicle pricing" : "Website settings"}</button>)}</nav>
           {activeTab === "enquiries" && <section className="admin-panel" aria-labelledby="enquiries-title"><div className="admin-panel-heading"><div><h2 id="enquiries-title">Customer enquiries</h2><p className="muted">Latest 200 enquiries · newest first</p></div><button className="button secondary" disabled={loadingQueries} onClick={loadQueries}>{loadingQueries ? "Refreshing…" : "↻ Refresh"}</button></div><div className="admin-filters"><label>Search enquiries<input type="search" placeholder="Name, phone, address or reference" value={search} onChange={(event)=>setSearch(event.target.value)} /></label><label>Status<select value={statusFilter} onChange={(event)=>setStatusFilter(event.target.value)}><option value="all">All statuses</option>{statuses.map((status)=><option key={status} value={status}>{status.charAt(0).toUpperCase()+status.slice(1)}</option>)}</select></label><span className="muted">{filteredQueries.length} results</span></div>{queryStatus && <p role="status" className="admin-feedback">{queryStatus}</p>}
           {loadingQueries ? <div className="admin-empty" role="status">Loading enquiries…</div> : !filteredQueries.length ? <div className="admin-empty"><h3>{queries.length ? "No matching enquiries" : "No enquiries yet"}</h3><p>{queries.length ? "Try another search or status filter." : "Customer quote requests will appear here."}</p>{queries.length > 0 && <button className="button secondary" onClick={()=>{setSearch("");setStatusFilter("all");}}>Clear filters</button>}</div> : <div className="admin-table-scroll" role="region" aria-label="Customer enquiries table" tabIndex={0}><table className="admin-enquiry-table"><caption className="sr-only">Customer enquiries, newest first</caption><thead><tr><th scope="col">Customer</th><th scope="col">Delivery address</th><th scope="col">Requirement</th><th scope="col">Estimate</th><th scope="col">Delivery</th><th scope="col">Received</th><th scope="col">Status</th></tr></thead><tbody>{filteredQueries.map((query)=><tr key={query.id}><td><strong>{query.name}</strong><a href={`tel:+${normalizePhoneNumber(query.phone)}`}>{query.phone}</a><details className="enquiry-extra"><summary>Reference & notes</summary><small>{query.id}</small><p>{query.notes || "No notes provided."}</p></details></td><td className="table-address">{query.address}</td><td><strong>{query.sand_type}</strong><span>{query.unit_label || query.unit}</span><small>{query.unit !== "unspecified" && `${query.quantity} ${Number(query.quantity) === 1 ? "load" : "loads"}`}</small></td><td className="table-price">{query.unit === "unspecified" ? "Price to be confirmed" : currency(query.total)}</td><td>{query.delivery}{query.schedule_date && <small>{formatDisplayDate(query.schedule_date)}<br/>{query.schedule_time || ""}</small>}</td><td><span>{formatDisplayDate(query.created_at)}</span><small>{new Date(query.created_at).toLocaleTimeString("en-IN", {timeZone:"Asia/Kolkata",hour:"2-digit",minute:"2-digit"})} IST</small></td><td><label className="sr-only" htmlFor={`status-${query.id}`}>Status for {query.name}</label><select id={`status-${query.id}`} className={`table-status status-${query.status}`} disabled={Boolean(busy)} value={query.status || "new"} onChange={(event)=>runAction("status",()=>updateQueryStatus(query.id,event.target.value))}>{statuses.map((status)=><option key={status} value={status}>{status.charAt(0).toUpperCase()+status.slice(1)}</option>)}</select></td></tr>)}</tbody></table></div>}</section>}
-          {activeTab === "pricing" && <section className="admin-panel"><div className="admin-panel-heading"><div><h2>Vehicle pricing</h2><p className="muted">Set the price per load for each vehicle. Future dates take effect on that date.</p></div></div><form className="admin-edit-form" onSubmit={(event)=>runAction("pricing",savePricing,event)}><label className="admin-date">Effective date<input type="date" required value={pricing.priceDate} onChange={(event)=>setPricing({...pricing,priceDate:event.target.value})}/></label><div className="admin-vehicle-editor">{pricing.vehicles.map((vehicle,index)=><article key={vehicle.id} className="admin-vehicle-row"><span className="vehicle-number">{String(index+1).padStart(2,"0")}</span><label>Vehicle name<input required maxLength={100} value={vehicle.name} onChange={(event)=>updateVehicle(vehicle.id,"name",event.target.value)} /></label><label>Wheels<input type="number" min={0} step={1} required value={vehicle.wheels} onChange={(event)=>updateVehicle(vehicle.id,"wheels",event.target.value)} /></label><label>Price per load (₹)<input type="number" min={1} step="any" required value={vehicle.price} onChange={(event)=>updateVehicle(vehicle.id,"price",event.target.value)} /></label><button className="admin-remove" type="button" disabled={pricing.vehicles.length===1 || Boolean(busy)} aria-label={`Remove ${vehicle.name}`} onClick={()=>removeVehicle(vehicle.id)}>Remove</button></article>)}</div><div className="admin-save-bar"><button className="button secondary" type="button" disabled={Boolean(busy)} onClick={addVehicle}>+ Add vehicle</button><button className="button primary" disabled={Boolean(busy)}>{busy === "pricing" ? "Saving…" : "Save prices"}</button></div>{pricingStatus && <p className="admin-feedback" role="status">{pricingStatus}</p>}</form></section>}
+          {activeTab === "pricing" && <section className="admin-panel"><div className="admin-panel-heading"><div><h2>Vehicle pricing</h2><p className="muted">Set the price per load for each vehicle. Future dates take effect on that date.</p></div></div><form className="admin-edit-form" onSubmit={(event)=>runAction("pricing",savePricing,event)}><label className="admin-date">Effective date<input type="date" required value={pricing.priceDate} onChange={(event)=>setPricing({...pricing,priceDate:event.target.value})}/></label><div className="admin-vehicle-editor">{pricing.vehicles.map((vehicle,index)=><article key={vehicle.id} className="admin-vehicle-row"><span className="vehicle-number">{String(index+1).padStart(2,"0")}</span><label>Vehicle name<input required maxLength={100} value={vehicle.name} onChange={(event)=>updateVehicle(vehicle.id,"name",event.target.value)} /></label><label>Approximate capacity (cft/load)<input type="text" inputMode="decimal" placeholder="e.g. 100" value={vehicle.estimatedCapacityCft ?? ""} onChange={(event)=>updateVehicle(vehicle.id,"estimatedCapacityCft",event.target.value)} /></label><label>Price per load (₹)<input type="number" min={1} step="any" required value={vehicle.price} onChange={(event)=>updateVehicle(vehicle.id,"price",event.target.value)} /></label><button className="admin-remove" type="button" disabled={pricing.vehicles.length===1 || Boolean(busy)} aria-label={`Remove ${vehicle.name}`} onClick={()=>removeVehicle(vehicle.id)}>Remove</button></article>)}</div><div className="admin-save-bar"><button className="button secondary" type="button" disabled={Boolean(busy)} onClick={addVehicle}>+ Add vehicle</button><button className="button primary" disabled={Boolean(busy)}>{busy === "pricing" ? "Saving…" : "Save prices"}</button></div>{pricingStatus && <p className="admin-feedback" role="status">{pricingStatus}</p>}</form></section>}
           {activeTab === "settings" && <section className="admin-panel"><div className="admin-panel-heading"><div><h2>Website settings</h2><p className="muted">Manage public contact details and the same-day delivery surcharge.</p></div></div><div className="admin-settings-grid"><form className="admin-edit-form" onSubmit={(event)=>runAction("settings",saveSettings,event)}><label>Phone & WhatsApp<input type="tel" autoComplete="tel" required value={settings.contactPhone} onChange={(event)=>setSettings({...settings,contactPhone:event.target.value})} /><small className="muted">Include the country code, e.g. 91 followed by your mobile number.</small></label><label>Contact email<input type="email" autoComplete="email" required value={settings.contactEmail} onChange={(event)=>setSettings({...settings,contactEmail:event.target.value})} /></label><label>Same-day surcharge (₹)<input type="number" inputMode="numeric" min={0} max={100000} step={1} required value={settings.sameDaySurcharge} onChange={(event)=>setSettings({...settings,sameDaySurcharge:event.target.value})} /><small className="muted">Added once per enquiry for same-day delivery. Set 0 to waive it.</small></label><button className="button primary" disabled={Boolean(busy)}>{busy === "settings" ? "Saving…" : "Save settings"}</button>{settingsStatus && <p className="admin-feedback" role="status">{settingsStatus}</p>}</form><aside className="admin-contact-preview"><p className="eyebrow">Public contact preview</p><h3>Talk to Digit Infra Pvt LTD.</h3><p>{formatPhoneNumber(settings.contactPhone)}</p><p>{settings.contactEmail}</p><p>Same-day surcharge: {currency(settings.sameDaySurcharge)}</p><small className="muted">Preview of your current edits. Save to update the website.</small></aside></div></section>}
         </>}
       </main><footer className="admin-footer">Digit Infra Pvt LTD · Sand At Your Door</footer>

@@ -14,8 +14,6 @@ A small contractor in Patna today calls 3 to 5 suppliers for every sand order to
 
 These challenges indicate a need for a simple, accessible way to communicate requirements, obtain comparable quotes, and coordinate supply and delivery. For Digit Infra, addressing them could improve enquiry quality, follow-up, and conversion into sustainable fulfilled business. The extent of these problems remains to be validated through interviews and operating data.
 
-**Core USP: “Guaranteed savings. Lower than market price.”**
-
 ## Market and Competitive Landscape
 
 - Target Audience: ~500 active small-contractor builders (10–50 unit residential projects) and 60–80 building material retailers across micro-markets (e.g., Danapur, Bailey Road, Bypass).
@@ -119,7 +117,7 @@ We scoped the MVP against 2 criteria: must enable a buyer to go from 'no informa
 
 ### Feature 2 — Current vehicle rates and indicative estimates
 
-1. Display saved vehicle rates with their effective date.
+1. Display saved vehicle rates with their effective date and approximate capacity in cft per load when confirmed by Digit Infra. Unknown capacities remain explicitly unconfirmed; never infer capacity from wheel count.
 2. Show loading and unavailable banner states.
 3. Calculate an indicative vehicle/load-based estimate with a configurable same-day surcharge.
 4. Calculate selected-vehicle pricing server-side when saving the enquiry.
@@ -155,7 +153,7 @@ We scoped the MVP against 2 criteria: must enable a buyer to go from 'no informa
 1. Restrict access to authorized admins.
 2. Show the latest 200 enquiries.
 3. Support search, filters, and manual status updates.
-4. Allow operators to maintain vehicle rates, effective dates, contact settings, and the same-day surcharge.
+4. Allow operators to maintain vehicle rates, optional positive approximate capacities in cft per load, effective dates, contact settings, and the same-day surcharge. Replace the numeric wheel-count editor with estimated capacity; retain vehicle names and IDs. Save the server-selected capacity with enquiry vehicle labels and show it in confirmations and WhatsApp when available.
 5. Why it matters: Give a small operation a manageable pricing and follow-up workflow.
 
 ## Features Out

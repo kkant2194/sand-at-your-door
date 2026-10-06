@@ -144,3 +144,7 @@ node --test tests/quoteAnalytics.test.mjs tests/analytics.test.mjs tests/queries
 ```
 
 The development server uses `.next-dev`; production builds use `.next`.
+
+## Approximate vehicle capacity
+
+Admins maintain an optional approximate capacity in cft per load alongside each vehicle price. Enter only operating estimates confirmed by Digit Infra; legacy records without capacity show “Capacity awaiting confirmation.” Capacity appears beside prices in English and Hindi, and is included in the saved confirmation and WhatsApp handoff when available. Enquiries retain the server-selected capacity in their vehicle-label snapshot, so later pricing edits do not change earlier enquiry details. Totals remain vehicle price × loads plus applicable surcharge; capacity is an estimate, not a verified weight or quantity guarantee.

@@ -1,3 +1,4 @@
+import { parseEstimatedCapacity } from "../../../lib/vehicleCapacity";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
@@ -58,6 +59,7 @@ export async function POST(request) {
     }
     sameDaySurcharge = getSameDaySurcharge(setting?.value);
   }
+  const estimatedCapacityCft = parseEstimatedCapacity(vehicle?.estimatedCapacityCft);
   const quantity = body.quantity || 1;
   const rate = vehicle ? Number(vehicle.price) : 0;
   const total = vehicle ? Math.round(rate * quantity + sameDaySurcharge) : 0;
@@ -68,7 +70,7 @@ export async function POST(request) {
     sand_type: body.sandType || "Sand",
     quantity: Math.max(Number(body.quantity) || 1, 1),
     unit: body.vehicleId || "unspecified",
-    unit_label: vehicle?.name || "To be confirmed",
+    unit_label: vehicle ? `${vehicle.name}${estimatedCapacityCft ? ` · Approx. ${estimatedCapacityCft} cft/load` : ""}` : "To be confirmed",
     delivery: body.delivery || "To be confirmed",
     schedule_date: body.delivery === "Scheduled" ? body.scheduleDate || null : null,
     schedule_time: null,
@@ -84,5 +86,5 @@ export async function POST(request) {
   }
 
   const reference = data.id.replaceAll("-", "").slice(0, 10).toUpperCase();
-  return NextResponse.json({ success: true, id: data.id, reference, rate, total, priceDate: vehicle ? pricing.price_date : null, vehicleName: vehicle?.name || "To be confirmed", priced: Boolean(vehicle) });
+  return NextResponse.json({ success: true, id: data.id, reference, rate, total, estimatedCapacityCft, priceDate: vehicle ? pricing.price_date : null, vehicleName: vehicle?.name || "To be confirmed", priced: Boolean(vehicle) });
 }
