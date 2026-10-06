@@ -2,7 +2,7 @@
   "name": "sand-at-your-door",
   "version": "2.0.0",
   "private": true,
-  "description": "Production-ready Sand At Your Door app built with Next.js and Supabase.",
+  "description": "Pilot-ready Sand At Your Door app built with Next.js and Supabase.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
