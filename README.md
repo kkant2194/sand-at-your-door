@@ -84,18 +84,6 @@ Mixpanel tracks the quote journey, field completion, submission outcomes, and ph
 
 See [`docs/mixpanel-setup.md`](docs/mixpanel-setup.md) for project setup, event definitions, reports, and verification. Supabase remains the source of truth for saved enquiries; a client analytics event can be missed even if the database save succeeded.
 
-## Google Business Profile
-
-A Google Business Profile can help customers discover Digit Infra on Google Search and Maps, but it cannot guarantee placement for “sand supplier near me.” Local results depend on relevance, distance, and prominence.
-
-1. Use a Google account controlled by Digit Infra. Search for the business first, then claim the existing profile or create one if needed.
-2. Use the real-world business name and the most accurate category available. Do not add search terms to the business name or create duplicate profiles.
-3. If customers are not served at the business address, configure a service-area business and hide the address. List only areas Digit Infra actually serves; do not use a virtual office.
-4. Add the production website, business phone, accurate hours, a clear service description, and genuine business/product photos. Complete the verification method Google offers.
-5. Ask real customers for honest reviews without incentives. Keep the profile accurate and review its performance data.
-
-Google guidance: [business representation](https://support.google.com/business/answer/3038177), [service-area businesses](https://support.google.com/business/answer/10514743), and [local ranking](https://support.google.com/business/answer/7091).
-
 ## Rollout and launch blockers
 
 The three-week rollout starts with internal testing and a small buyer cohort. Do not start the Week 3 open pilot or public acquisition until the launch gate is complete.
@@ -145,10 +133,6 @@ The admin queue shows the latest 200 enquiries, with search, filters, and manual
 Before committing to a final quote, the operator verifies material, quantity, coverage, site access, unloading, timing, and included charges. Define savings-guarantee eligibility, comparison rules, validity, minimum saving, and remedy, and agree measurable load capacity and sand quality with operations. These remain open operating issues in the PRD.
 
 Customer accounts, checkout/payments, automated competitor comparison or guarantee processing, automated outbound WhatsApp, partner dispatch/payouts, GPS tracking, verified weight measurement, and multi-supplier or geographic expansion are outside the MVP.
-
-## Same-day surcharge
-
-Admins can edit the same-day surcharge under Website settings. It is stored as `site_settings.same_day_surcharge` and applied once to a same-day enquiry. If the setting is missing, the app defaults to ₹500; setting it to zero disables the surcharge. The final delivered price still requires operator confirmation.
 
 ## Useful commands
 
