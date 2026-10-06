@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { formatDisplayDate } from "../lib/dateFormat";
 import { useEffect, useRef, useState } from "react";
 import { isSupabaseConfigured, supabase } from "../lib/supabaseClient";
 
@@ -18,8 +19,7 @@ function getPatnaDate(date = new Date()) {
 
 function formatRateDate(date) {
   if (!date) return "";
-  const [year, month, day] = date.split("-");
-  return `${day}/${month}/${year}`;
+  return formatDisplayDate(date);
 }
 
 const defaultVehicles = [
@@ -58,12 +58,11 @@ const copy = {
     pricePending: "Our team will confirm your vehicle and price.",
     ratesLoading: "Loading vehicle rates…",
     ratesUnavailable: "Vehicle rates unavailable · Contact us for a quote",
-    eyebrow: "Same day sand delivery in Patna",
     title: "Sand delivered to your site in Patna.",
-    savingsTitle: "Guaranteed savings. Lower than market price.",
+    savingsTitle: "Share another seller's quote. We'll try to beat it.",
     savingsNote: "Compare equivalent sand quality and quantity delivered to the same address. Share your local quote with our team to confirm your savings and final delivered price.",
     lead:
-      "Order construction sand without hidden charges. Get clear pricing, scheduled delivery, and a fast callback from the Digit Infra team.",
+      "Request a quote. We confirm your full delivered price before you pay.",
     estimateCta: "Get a quote",
     whatsappCta: "WhatsApp now",
     productsEyebrow: "Sand for every project",
@@ -105,7 +104,6 @@ const copy = {
     pricePending: "हमारी टीम वाहन और कीमत की पुष्टि करेगी।",
     ratesLoading: "वाहनों के रेट लोड हो रहे हैं…",
     ratesUnavailable: "वाहनों के रेट उपलब्ध नहीं हैं · भाव के लिए संपर्क करें",
-    eyebrow: "पटना में उसी दिन बालू डिलीवरी",
     title: "पटना में आपकी साइट तक बालू डिलीवरी।",
     savingsTitle: "बचत की गारंटी। बाजार से कम कीमत।",
     savingsNote: "एक ही पते पर डिलीवरी के लिए समान गुणवत्ता और मात्रा वाले बालू की कीमत से तुलना करें। बचत और अंतिम डिलीवरी कीमत की पुष्टि के लिए अपना स्थानीय भाव हमारी टीम को भेजें।",
@@ -391,7 +389,7 @@ export default function Home() {
       lead.vehicleId ? `${t.vehicle}: ${lead.vehicleName}` : "",
       lead.quantity ? `${t.loads}: ${lead.quantity}` : "",
       lead.delivery ? `${t.timing}: ${t[lead.delivery === "Same day" ? "sameDay" : lead.delivery === "Tomorrow" ? "tomorrow" : "scheduled"]}` : "",
-      lead.scheduleDate ? `${t.date}: ${lead.scheduleDate}` : "",
+      lead.scheduleDate ? `${t.date}: ${formatDisplayDate(lead.scheduleDate)}` : "",
       lead.vehicleId ? `${t.rates}: ${currency(lead.rate)}` : "",
       lead.total != null && lead.vehicleId ? `${t.estimatedTotal}: ${currency(lead.total)}` : "",
       lead.notes ? `${t.notes}: ${lead.notes}` : "",
@@ -484,7 +482,6 @@ export default function Home() {
         <section className="hero">
           <div className="hero-media" role="img" aria-label="Sand delivery truck at a construction site" />
           <div className="hero-content">
-            <p className="eyebrow">{t.eyebrow}</p>
             <h1>{t.title}</h1>
             <p>{t.lead}</p>
             <div className="hero-savings">

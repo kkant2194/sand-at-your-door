@@ -1,6 +1,6 @@
 # Mixpanel quote-to-lead analytics
 
-Production website: https://sand-at-your-door.vercel.app
+Live Demo: https://sand-at-your-door.vercel.app
 
 ## Connect your project
 
