@@ -107,9 +107,9 @@ const copy = {
     ratesLoading: "वाहनों के रेट लोड हो रहे हैं…",
     ratesUnavailable: "वाहनों के रेट उपलब्ध नहीं हैं · भाव के लिए संपर्क करें",
     title: "पटना में आपकी साइट तक बालू डिलीवरी।",
-    savingsTitle: "बचत की गारंटी। बाजार से कम कीमत।",
+    savingsTitle: "दूसरे विक्रेता का भाव भेजें। हम उससे कम कीमत देने की कोशिश करेंगे।",
     savingsNote: "एक ही पते पर डिलीवरी के लिए समान गुणवत्ता और मात्रा वाले बालू की कीमत से तुलना करें। बचत और अंतिम डिलीवरी कीमत की पुष्टि के लिए अपना स्थानीय भाव हमारी टीम को भेजें।",
-    lead: "बिना छिपे शुल्क के बालू ऑर्डर करें। साफ रेट, तय समय पर डिलीवरी और Digit Infra टीम से तेज कॉलबैक।",
+    lead: "भाव मांगें। भुगतान से पहले हम डिलीवरी सहित पूरी कीमत की पुष्टि करेंगे।",
     estimateCta: "भाव मांगें",
     whatsappCta: "व्हाट्सऐप करें",
     productsEyebrow: "हर काम के लिए बालू",
@@ -395,7 +395,7 @@ export default function Home() {
       `${t.mobile}: ${lead.phone}`,
       `${t.address}: ${lead.address}`,
       lead.sandType ? `${t.sandType}: ${t[applications.find((item) => item.value === lead.sandType)?.key] || lead.sandType}` : "",
-      lead.vehicleId ? `${t.vehicle}: ${lead.vehicleName}` : "",
+      lead.vehicleId ? `${t.vehicle}: ${displayVehicle({ id: lead.vehicleId, name: lead.vehicleName })}` : "",
       lead.vehicleId && lead.estimatedCapacityCft ? capacityLabel(lead.estimatedCapacityCft) : "",
       lead.quantity ? `${t.loads}: ${lead.quantity}` : "",
       lead.delivery ? `${t.timing}: ${t[lead.delivery === "Same day" ? "sameDay" : lead.delivery === "Tomorrow" ? "tomorrow" : "scheduled"]}` : "",
@@ -405,9 +405,11 @@ export default function Home() {
       lead.notes ? `${t.notes}: ${lead.notes}` : "",
     ].filter(Boolean).join("\n");
     const introduction = lead.reference
-      ? `I just submitted Enquiry #${lead.reference} with the following details:`
-      : "I would like a quote. Here are my details:";
-    return `Hi Digit Infra,\n\n${introduction}\n\n${details}\n\nPlease confirm the final delivered price.`;
+      ? language === "hi" ? `मेरा अनुरोध #${lead.reference} सेव हो गया है। विवरण:` : `I just submitted Enquiry #${lead.reference} with the following details:`
+      : language === "hi" ? "मुझे भाव चाहिए। मेरा विवरण:" : "I would like a quote. Here are my details:";
+    const greeting = language === "hi" ? "नमस्ते Digit Infra," : "Hi Digit Infra,";
+    const closing = language === "hi" ? "कृपया डिलीवरी सहित अंतिम कीमत की पुष्टि करें।" : "Please confirm the final delivered price.";
+    return `${greeting}\n\n${introduction}\n\n${details}\n\n${closing}`;
   }
 
   function openWhatsApp(lead, location = "quote_form") {
