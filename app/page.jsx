@@ -115,21 +115,21 @@ const copy = {
     productsEyebrow: "हर काम के लिए बालू",
     productsTitle: "बताएं, आपको बालू किस काम के लिए चाहिए।",
     plaster: "प्लास्टर",
-    plasterText: "दीवार या छत के प्लास्टर का काम बताएं, ताकि बालू की जरूरत की पुष्टि की जा सके।",
+    plasterText: "दीवारों और छतों के लिए बालू की जरूरत।",
     rcc: "आरसीसी (सामान्य)",
-    rccText: "आरसीसी काम के लिए साइट की जरूरत और तय बालू ग्रेड हमारी टीम को बताएं।",
+    rccText: "कंक्रीट के काम के लिए बालू की आवश्यक गुणवत्ता बताएं।",
     terrace: "छत की स्लैब",
     terraceText: "छत की ढलाई के लिए मात्रा और डिलीवरी का समय बताएं।",
     raft: "राफ्ट फाउंडेशन",
-    raftText: "नींव के काम के लिए साइट टीम की बताई मात्रा और आवश्यकताओं के अनुसार सप्लाई तय करें।",
+    raftText: "नींव की ढलाई के लिए बालू की सप्लाई की व्यवस्था करें।",
     fastQuote: "तेज भाव",
     quoteTitle: "अपनी डिलीवरी का अनुमानित भाव देखें।",
-    quoteText: "यह केवल अनुमानित भाव है। फाइनल रेट लोकेशन, रास्ता, मात्रा और अनलोडिंग देखकर कन्फर्म होगा।",
+    quoteText: "यह कैलकुलेटर अनुमानित कीमत दिखाता है। डिलीवरी स्थान, साइट तक पहुंच, मात्रा और अनलोडिंग की जरूरतें जांचने के बाद अंतिम कीमत की पुष्टि होगी।",
     customerName: "ग्राहक का नाम",
     mobile: "मोबाइल नंबर",
     address: "डिलीवरी पता",
     sandType: "बालू का उपयोग",
-    quantity: "लोड की संख्या (वैकल्पिक)",
+    quantity: "मात्रा",
     vehicle: "वाहन",
     timing: "डिलीवरी समय",
     date: "डिलीवरी तारीख",
@@ -285,8 +285,8 @@ export default function Home() {
   }, [quote, pricing, language, today]);
   function displayVehicle(vehicle) {
     if (language === "en") return vehicle.name;
-    if (vehicle.id === "tractor") return "ट्रैक्टर लोड";
-    const wheels = vehicle.name.match(/^(\d+)-wheel truck$/i)?.[1];
+    if (vehicle.id === "tractor" || /^tractor(?: load)?$/i.test(vehicle.name)) return "ट्रैक्टर लोड";
+    const wheels = vehicle.name.match(/^(\d+)\s*[-–—]?\s*wheels?\s*[-–—]?\s*truck(?:\s+load)?$/i)?.[1];
     if (wheels) return `${wheels} पहियों वाला ट्रक`;
     return vehicle.name;
   }
@@ -303,6 +303,12 @@ export default function Home() {
     return () => viewport?.removeEventListener("resize", resize);
   }, []);
   function changeLanguage(value) {
+    const translateMessage = (message) => {
+      const key = Object.keys(copy[language]).find((key) => copy[language][key] === message);
+      return key ? copy[value][key] : message;
+    };
+    setErrors((current) => Object.fromEntries(Object.entries(current).map(([field, message]) => [field, translateMessage(message)])));
+    setQuoteStatus((current) => translateMessage(current));
     setLanguage(value);
     try { localStorage.setItem("sand-language", value); } catch {}
   }
@@ -461,19 +467,19 @@ export default function Home() {
   return (
     <>
       <header className="site-header">
-        <a className="brand" href="#home" aria-label="Sand At Your Door home">
+        <a className="brand" href="#home" aria-label={language === "hi" ? "Sand At Your Door का मुख्य पृष्ठ" : "Sand At Your Door home"}>
           <span className="brand-mark">SA</span>
           <span>
             <strong>Sand At Your Door</strong>
             <small>Digit Infra Pvt LTD</small>
           </span>
         </a>
-        <nav className="main-nav" aria-label="Main navigation">
+        <nav className="main-nav" aria-label={language === "hi" ? "मुख्य नेविगेशन" : "Main navigation"}>
           <a href="#products">{t.products}</a>
           <a href="#calculator">{t.quote}</a>
           <a href="#contact">{t.contact}</a>
         </nav>
-        <div className="language-toggle" role="group" aria-label="Language selector">
+        <div className="language-toggle" role="group" aria-label={language === "hi" ? "भाषा चुनें" : "Language selector"}>
           <button className={language === "en" ? "active" : ""} type="button" aria-pressed={language === "en"} onClick={() => changeLanguage("en")}>
             English
           </button>
@@ -492,7 +498,7 @@ export default function Home() {
       </section>
       <main id="home">
         <section className="hero">
-          <div className="hero-media" role="img" aria-label="Sand delivery truck at a construction site" />
+          <div className="hero-media" role="img" aria-label={language === "hi" ? "निर्माण स्थल पर बालू की डिलीवरी वाला ट्रक" : "Sand delivery truck at a construction site"} />
           <div className="hero-content">
             <h1>{t.title}</h1>
             <p>{t.lead}</p>
@@ -510,7 +516,7 @@ export default function Home() {
 
         <div className={`mobile-cta ${keyboardOpen ? "keyboard-open" : ""}`} aria-label={t.contact}>
           <a href={`tel:+${phoneNumber}`} onClick={() => trackQuoteEvent("phone_clicked", { language, phone_location: "mobile_bar" })}>{t.call}</a>
-          <a href={`https://wa.me/${phoneNumber}`} target="_blank" rel="noreferrer" onClick={() => trackQuoteEvent("whatsapp_clicked", { language, whatsapp_location: "mobile_bar" })}><WhatsAppIcon /> WhatsApp</a>
+          <a href={`https://wa.me/${phoneNumber}`} target="_blank" rel="noreferrer" onClick={() => trackQuoteEvent("whatsapp_clicked", { language, whatsapp_location: "mobile_bar" })}><WhatsAppIcon /> {language === "hi" ? "व्हाट्सऐप" : "WhatsApp"}</a>
           <a href="#calculator">{t.estimateCta}</a>
         </div>
         <section id="products" className="section">
@@ -586,7 +592,7 @@ export default function Home() {
             <a href={`https://wa.me/${phoneNumber}`} target="_blank" rel="noreferrer" onClick={() => trackQuoteEvent("whatsapp_clicked", { language, whatsapp_location: "contact_section" })}>
               <strong>
                 <WhatsAppIcon />
-                WhatsApp
+                {language === "hi" ? "व्हाट्सऐप" : "WhatsApp"}
               </strong>
               <span>{t.sendDetails}</span>
             </a>
@@ -595,7 +601,7 @@ export default function Home() {
       </main>
 
       <footer className="site-footer">
-        <p>Copyright {new Date().getFullYear()} Digit Infra Pvt LTD. Sand At Your Door.</p>
+        <p>{language === "hi" ? "कॉपीराइट" : "Copyright"} {new Date().getFullYear()} Digit Infra Pvt LTD. Sand At Your Door.</p>
         <a href="#home">{t.back}</a>
       </footer>
     </>
